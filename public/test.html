@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Vistoria - Testes de API</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f0f2f5; padding: 20px; }
+        h1 { text-align: center; color: #333; margin-bottom: 30px; }
+        h2 { color: #555; margin-bottom: 15px; font-size: 16px; }
+        h3 { color: #666; margin: 20px 0 10px; font-size: 14px; border-bottom: 1px solid #eee; padding-bottom: 6px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .section-title {
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            color: #fff;
+            background: #455a64;
+            border-radius: 8px;
+            padding: 10px;
+            margin: 30px 0 15px;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+            cursor: pointer;
+            color: white;
+            font-weight: bold;
+            margin-bottom: 6px;
+        }
+        .btn-register  { background: #4CAF50; }
+        .btn-login     { background: #2196F3; }
+        .btn-profile   { background: #9C27B0; }
+        .btn-logout    { background: #f44336; }
+        .btn-post      { background: #FF9800; }
+        .btn-get       { background: #00BCD4; }
+        .btn-patch     { background: #8BC34A; }
+        .btn-delete    { background: #e53935; }
+        button:hover   { opacity: 0.85; }
+        .response {
+            margin-top: 15px;
+            padding: 12px;
+            border-radius: 5px;
+            background: #f9f9f9;
+            border-left: 4px solid #ddd;
+            font-size: 13px;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .response.success { border-left-color: #4CAF50; background: #f0fff0; }
+        .response.error   { border-left-color: #f44336; background: #fff0f0; }
+        .token-display {
+            background: #fff8e1;
+            border: 1px solid #ffc107;
+            border-radius: 5px;
+            padding: 10px;
+            font-size: 12px;
+            word-break: break-all;
+            margin-top: 10px;
+            display: none;
+        }
+        label { font-size: 13px; color: #777; margin-bottom: 4px; display: block; }
+        .row { display: flex; gap: 10px; }
+        .row button { flex: 1; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🔧 Sistema de Vistoria — Testes de API</h1>
+
+    <!-- TOKEN ATIVO -->
+    <div class="card">
+        <h2>🔑 Token Ativo</h2>
+        <div class="token-display" id="tokenDisplay">Nenhum token ainda...</div>
+    </div>
+
+    <!-- ══════════════════════════════════════ -->
+    <div class="section-title">🔐 AUTENTICAÇÃO</div>
+    <!-- ══════════════════════════════════════ -->
+
+    <!-- CADASTRO -->
+    <div class="card">
+        <h2>📝 Cadastro de Usuário</h2>
+        <label>Nome</label>
+        <input type="text" id="reg-nome" placeholder="Seu nome completo" />
+        <label>Email</label>
+        <input type="email" id="reg-email" placeholder="email@exemplo.com" />
+        <label>Senha</label>
+        <input type="password" id="reg-senha" placeholder="Mínimo 6 caracteres" />
+        <button class="btn-register" onclick="registrar()">Cadastrar</button>
+        <div class="response" id="reg-response">Aguardando...</div>
+    </div>
+
+    <!-- LOGIN -->
+    <div class="card">
+        <h2>🔐 Login</h2>
+        <label>Email</label>
+        <input type="email" id="login-email" placeholder="email@exemplo.com" />
+        <label>Senha</label>
+        <input type="password" id="login-senha" placeholder="Sua senha" />
+        <button class="btn-login" onclick="login()">Entrar</button>
+        <div class="response" id="login-response">Aguardando...</div>
+    </div>
+
+    <!-- PERFIL -->
+    <div class="card">
+        <h2>👤 Meu Perfil (rota protegida)</h2>
+        <button class="btn-profile" onclick="perfil()">Buscar Perfil</button>
+        <div class="response" id="perfil-response">Aguardando...</div>
+    </div>
+
+    <!-- LOGOUT -->
+    <div class="card">
+        <h2>🚪 Logout</h2>
+        <button class="btn-logout" onclick="logout()">Sair</button>
+        <div class="response" id="logout-response">Aguardando...</div>
+    </div>
+
+    <!-- ══════════════════════════════════════ -->
+    <div class="section-title">📋 VISTORIAS</div>
+    <!-- ══════════════════════════════════════ -->
+
+    <!-- CRIAR VISTORIA -->
+    <div class="card">
+        <h2>➕ Criar Vistoria</h2>
+        <label>Unidade ID (uuid)</label>
+        <input type="text" id="v-unidade_id" placeholder="uuid da unidade" />
+        <button class="btn-post" onclick="criarVistoria()">Criar Vistoria</button>
+        <div class="response" id="v-criar-response">Aguardando...</div>
+    </div>
+
+    <!-- LISTAR VISTORIAS -->
+    <div class="card">
+        <h2>📄 Listar Vistorias</h2>
+        <label>Filtrar por Status (opcional)</label>
+        <select id="v-filtro-status">
+            <option value="">Todos</option>
+            <option value="em_andamento">em_andamento</option>
+            <option value="finalizada">finalizada</option>
+            <option value="publicada">publicada</option>
+        </select>
+        <label>Filtrar por Unidade ID (opcional)</label>
+        <input type="text" id="v-filtro-unidade" placeholder="uuid da unidade (opcional)" />
+        <button class="btn-get" onclick="listarVistorias()">Listar Vistorias</button>
+        <div class="response" id="v-listar-response">Aguardando...</div>
+    </div>
+
+    <!-- DETALHE VISTORIA -->
+    <div class="card">
+        <h2>🔍 Detalhe da Vistoria</h2>
+        <label>Vistoria ID (uuid)</label>
+        <input type="text" id="v-detalhe-id" placeholder="uuid da vistoria" />
+        <button class="btn-get" onclick="detalheVistoria()">Buscar Vistoria</button>
+        <div class="response" id="v-detalhe-response">Aguardando...</div>
+    </div>
+
+    <!-- FINALIZAR / PUBLICAR -->
+    <div class="card">
+        <h2>🔄 Finalizar / Publicar Vistoria</h2>
+        <label>Vistoria ID (uuid)</label>
+        <input type="text" id="v-acao-id" placeholder="uuid da vistoria" />
+        <div class="row">
+            <button class="btn-patch" onclick="finalizarVistoria()">✅ Finalizar</button>
+            <button class="btn-post" onclick="publicarVistoria()">🚀 Publicar</button>
+        </div>
+        <div class="response" id="v-acao-response">Aguardando...</div>
+    </div>
+
+</div>
+
+<script>
+    const BASE_URL = '';
+    let token = localStorage.getItem('token') || null;
+
+    window.onload = () => {
+        if (token) mostrarToken(token);
+    };
+
+    function mostrarToken(t) {
+        const el = document.getElementById('tokenDisplay');
+        el.style.display = 'block';
+        el.textContent = t;
+    }
+
+    function setResponse(id, data, isError = false) {
+        const el = document.getElementById(id);
+        el.textContent = JSON.stringify(data, null, 2);
+        el.className = 'response ' + (isError ? 'error' : 'success');
+    }
+
+    function authHeader() {
+        return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+    }
+
+    // ─── AUTH ───────────────────────────────────
+
+    async function registrar() {
+        const nome  = document.getElementById('reg-nome').value;
+        const email = document.getElementById('reg-email').value;
+        const senha = document.getElementById('reg-senha').value;
+        try {
+            const res = await fetch(`${BASE_URL}/api/auth/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nome, email, senha })
+            });
+            const data = await res.json();
+            setResponse('reg-response', data, !res.ok);
+        } catch(e) {
+            setResponse('reg-response', { erro: e.message }, true);
+        }
+    }
+
+    async function login() {
+        const email = document.getElementById('login-email').value;
+        const senha = document.getElementById('login-senha').value;
+        try {
+            const res = await fetch(`${BASE_URL}/api/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password: senha })
+            });
+            const data = await res.json();
+            setResponse('login-response', data, !res.ok);
+            if (data.token) {
+                token = data.token;
+                localStorage.setItem('token', token);
+                mostrarToken(token);
+            }
+        } catch(e) {
+            setResponse('login-response', { erro: e.message }, true);
+        }
+    }
+
+    async function perfil() {
+        if (!token) { setResponse('perfil-response', { erro: 'Faça login primeiro!' }, true); return; }
+        try {
+            const res = await fetch(`${BASE_URL}/api/auth/me`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json();
+            setResponse('perfil-response', data, !res.ok);
+        } catch(e) {
+            setResponse('perfil-response', { erro: e.message }, true);
+        }
+    }
+
+    async function logout() {
+        if (token) {
+            await fetch(`${BASE_URL}/api/auth/logout`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+        }
+        token = null;
+        localStorage.removeItem('token');
+        document.getElementById('tokenDisplay').style.display = 'none';
+        setResponse('logout-response', { mensagem: '✅ Logout realizado com sucesso!' });
+    }
+
+    // ─── VISTORIAS ──────────────────────────────
+
+    async function criarVistoria() {
+        if (!token) { setResponse('v-criar-response', { erro: 'Faça login primeiro!' }, true); return; }
+        const unidade_id = document.getElementById('v-unidade_id').value;
+        if (!unidade_id) { setResponse('v-criar-response', { erro: 'Informe o unidade_id' }, true); return; }
+        try {
+            const res = await fetch(`${BASE_URL}/api/vistorias`, {
+                method: 'POST',
+                headers: authHeader(),
+                body: JSON.stringify({ unidade_id })
+            });
+            const data = await res.json();
+            setResponse('v-criar-response', data, !res.ok);
+
+            // Preenche automaticamente os campos de ID
+            if (data.vistoria?.id) {
+                document.getElementById('v-detalhe-id').value = data.vistoria.id;
+                document.getElementById('v-acao-id').value = data.vistoria.id;
+            }
+        } catch(e) {
+            setResponse('v-criar-response', { erro: e.message }, true);
+        }
+    }
+
+    async function listarVistorias() {
+        if (!token) { setResponse('v-listar-response', { erro: 'Faça login primeiro!' }, true); return; }
+        const status    = document.getElementById('v-filtro-status').value;
+        const unidade   = document.getElementById('v-filtro-unidade').value;
+        let params = new URLSearchParams();
+        if (status)   params.append('status', status);
+        if (unidade)  params.append('unidade_id', unidade);
+        try {
+            const res = await fetch(`${BASE_URL}/api/vistorias?${params.toString()}`, {
+                headers: authHeader()
+            });
+            const data = await res.json();
+            setResponse('v-listar-response', data, !res.ok);
+        } catch(e) {
+            setResponse('v-listar-response', { erro: e.message }, true);
+        }
+    }
+
+    async function detalheVistoria() {
+        if (!token) { setResponse('v-detalhe-response', { erro: 'Faça login primeiro!' }, true); return; }
+        const id = document.getElementById('v-detalhe-id').value;
+        if (!id) { setResponse('v-detalhe-response', { erro: 'Informe o ID da vistoria' }, true); return; }
+        try {
+            const res = await fetch(`${BASE_URL}/api/vistorias/${id}`, {
+                headers: authHeader()
+            });
+            const data = await res.json();
+            setResponse('v-detalhe-response', data, !res.ok);
+        } catch(e) {
+            setResponse('v-detalhe-response', { erro: e.message }, true);
+        }
+    }
+
+    async function finalizarVistoria() {
+        if (!token) { setResponse('v-acao-response', { erro: 'Faça login primeiro!' }, true); return; }
+        const id = document.getElementById('v-acao-id').value;
+        if (!id) { setResponse('v-acao-response', { erro: 'Informe o ID da vistoria' }, true); return; }
+        try {
+            const res = await fetch(`${BASE_URL}/api/vistorias/${id}/finalizar`, {
+                method: 'PATCH',
+                headers: authHeader()
+            });
+            const data = await res.json();
+            setResponse('v-acao-response', data, !res.ok);
+        } catch(e) {
+            setResponse('v-acao-response', { erro: e.message }, true);
+        }
+    }
+
+    async function publicarVistoria() {
+        if (!token) { setResponse('v-acao-response', { erro: 'Faça login primeiro!' }, true); return; }
+        const id = document.getElementById('v-acao-id').value;
+        if (!id) { setResponse('v-acao-response', { erro: 'Informe o ID da vistoria' }, true); return; }
+        try {
+            const res = await fetch(`${BASE_URL}/api/vistorias/${id}/publicar`, {
+                method: 'PATCH',
+                headers: authHeader()
+            });
+            const data = await res.json();
+            setResponse('v-acao-response', data, !res.ok);
+        } catch(e) {
+            setResponse('v-acao-response', { erro: e.message }, true);
+        }
+    }
+</script>
+
+</body>
+</html>
