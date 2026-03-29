@@ -444,6 +444,82 @@
         </div>
         <div class="response" id="emp-status-response">Aguardando...</div>
     </div>
+    <!-- ══════════════════════════════════════ -->
+    <div class="section-title">🏭 UNIDADES</div>
+    <!-- ══════════════════════════════════════ -->
+
+    <div class="card">
+        <h2>📄 Listar Unidades</h2>
+        <label>Empresa ID (opcional)</label>
+        <input type="text" id="uni-filtro-empresa" placeholder="uuid da empresa" />
+        <label>Filtrar por Status</label>
+        <select id="uni-filtro-ativo">
+            <option value="">Todos</option>
+            <option value="true">Ativas</option>
+            <option value="false">Inativas</option>
+        </select>
+        <button class="btn-get" onclick="listarUnidades()">Listar Unidades</button>
+        <div class="response" id="uni-listar-response">Aguardando...</div>
+    </div>
+
+    <div class="card">
+        <h2>🔍 Detalhe da Unidade</h2>
+        <label>Unidade ID (uuid)</label>
+        <input type="text" id="uni-detalhe-id" placeholder="uuid da unidade" />
+        <button class="btn-get" onclick="detalheUnidade()">Buscar Unidade</button>
+        <div class="response" id="uni-detalhe-response">Aguardando...</div>
+        <div class="foto-preview-box" id="uni-logo-preview">
+            <label>Logo da unidade:</label>
+            <img id="uni-logo-preview-img" src="" alt="Logo" />
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>➕ Criar Unidade</h2>
+        <label>Nome *</label>
+        <input type="text" id="uni-criar-nome" placeholder="Nome da unidade" />
+        <label>Empresa ID *</label>
+        <input type="text" id="uni-criar-empresa-id" placeholder="uuid da empresa" />
+        <label>Endereço (opcional)</label>
+        <input type="text" id="uni-criar-endereco" placeholder="Endereço completo" />
+        <label>Logo (opcional — JPEG, PNG ou WEBP, máx. 5MB)</label>
+        <input type="file" id="uni-criar-logo" accept="image/jpeg,image/png,image/webp" />
+        <button class="btn-post" onclick="criarUnidade()">Criar Unidade</button>
+        <div class="response" id="uni-criar-response">Aguardando...</div>
+    </div>
+
+    <div class="card">
+        <h2>✏️ Editar Unidade</h2>
+        <label>Unidade ID (uuid)</label>
+        <input type="text" id="uni-edit-id" placeholder="uuid da unidade" />
+        <label>Novo Nome</label>
+        <input type="text" id="uni-edit-nome" placeholder="Novo nome" />
+        <label>Novo Endereço</label>
+        <input type="text" id="uni-edit-endereco" placeholder="Novo endereço" />
+        <label>Novo Logo (opcional)</label>
+        <input type="file" id="uni-edit-logo" accept="image/jpeg,image/png,image/webp" />
+        <button class="btn-put" onclick="editarUnidade()">Salvar Alterações</button>
+        <div class="response" id="uni-edit-response">Aguardando...</div>
+    </div>
+
+    <div class="card">
+        <h2>🔄 Ativar / Desativar Unidade</h2>
+        <label>Unidade ID (uuid)</label>
+        <input type="text" id="uni-status-id" placeholder="uuid da unidade" />
+        <div class="row">
+            <button class="btn-patch" onclick="ativarUnidade()">✅ Ativar</button>
+            <button class="btn-delete" onclick="desativarUnidade()">🚫 Desativar</button>
+        </div>
+        <div class="response" id="uni-status-response">Aguardando...</div>
+    </div>
+
+    <div class="card">
+        <h2>🗑️ Remover Logo da Unidade</h2>
+        <label>Unidade ID (uuid)</label>
+        <input type="text" id="uni-logo-del-id" placeholder="uuid da unidade" />
+        <button class="btn-delete" onclick="removerLogoUnidade()">🗑️ Remover Logo</button>
+        <div class="response" id="uni-logo-del-response">Aguardando...</div>
+    </div>
 
 </div>
 
@@ -962,6 +1038,124 @@
         } catch(e) {
             setResponse('emp-status-response', { erro: e.message }, true);
         }
+    }
+    // ─── UNIDADES ───────────────────────────────
+
+    async function listarUnidades() {
+        if (!token) { setResponse('uni-listar-response', { erro: 'Faça login primeiro!' }, true); return; }
+        const empresa_id = document.getElementById('uni-filtro-empresa').value.trim();
+        const ativo = document.getElementById('uni-filtro-ativo').value;
+        const params = new URLSearchParams();
+        if (empresa_id) params.append('empresa_id', empresa_id);
+        if (ativo !== '') params.append('ativo', ativo);
+        try {
+            const res = await fetch(`${BASE_URL}/api/unidades?${params.toString()}`, { headers: authHeader() });
+            const data = await res.json();
+            setResponse('uni-listar-response', data, !res.ok);
+        } catch(e) { setResponse('uni-listar-response', { erro: e.message }, true); }
+    }
+
+    async function detalheUnidade() {
+        if (!token) { setResponse('uni-detalhe-response', { erro: 'Faça login primeiro!' }, true); return; }
+        const id = document.getElementById('uni-detalhe-id').value.trim();
+        if (!id) { setResponse('uni-detalhe-response', { erro: 'Informe o ID' }, true); return; }
+        try {
+            const res = await fetch(`${BASE_URL}/api/unidades/${id}`, { headers: authHeader() });
+            const data = await res.json();
+            setResponse('uni-detalhe-response', data, !res.ok);
+            if (data.data?.logo_url_assinada) {
+                document.getElementById('uni-logo-preview-img').src = data.data.logo_url_assinada;
+                document.getElementById('uni-logo-preview').style.display = 'block';
+            } else {
+                document.getElementById('uni-logo-preview').style.display = 'none';
+            }
+        } catch(e) { setResponse('uni-detalhe-response', { erro: e.message }, true); }
+    }
+
+    async function criarUnidade() {
+        if (!token) { setResponse('uni-criar-response', { erro: 'Faça login primeiro!' }, true); return; }
+        const nome = document.getElementById('uni-criar-nome').value.trim();
+        const empresa_id = document.getElementById('uni-criar-empresa-id').value.trim();
+        const endereco = document.getElementById('uni-criar-endereco').value.trim();
+        const logoFile = document.getElementById('uni-criar-logo').files[0];
+        if (!nome) { setResponse('uni-criar-response', { erro: 'Nome é obrigatório' }, true); return; }
+        if (!empresa_id) { setResponse('uni-criar-response', { erro: 'Empresa ID é obrigatório' }, true); return; }
+        const formData = new FormData();
+        formData.append('nome', nome);
+        formData.append('empresa_id', empresa_id);
+        if (endereco) formData.append('endereco', endereco);
+        if (logoFile) formData.append('logo', logoFile);
+        setResponse('uni-criar-response', { status: '⏳ Criando...' });
+        try {
+            const res = await fetch(`${BASE_URL}/api/unidades`, {
+                method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: formData
+            });
+            const data = await res.json();
+            setResponse('uni-criar-response', data, !res.ok);
+            if (data.data?.id) {
+                document.getElementById('uni-detalhe-id').value = data.data.id;
+                document.getElementById('uni-edit-id').value    = data.data.id;
+                document.getElementById('uni-status-id').value  = data.data.id;
+                document.getElementById('uni-logo-del-id').value = data.data.id;
+                document.getElementById('area-unidade-id').value = data.data.id;
+                document.getElementById('checklist-unidade-id').value = data.data.id;
+                document.getElementById('v-unidade_id').value   = data.data.id;
+            }
+        } catch(e) { setResponse('uni-criar-response', { erro: e.message }, true); }
+    }
+
+    async function editarUnidade() {
+        if (!token) { setResponse('uni-edit-response', { erro: 'Faça login primeiro!' }, true); return; }
+        const id = document.getElementById('uni-edit-id').value.trim();
+        if (!id) { setResponse('uni-edit-response', { erro: 'Informe o ID' }, true); return; }
+        const formData = new FormData();
+        const nome = document.getElementById('uni-edit-nome').value.trim();
+        const endereco = document.getElementById('uni-edit-endereco').value.trim();
+        const logoFile = document.getElementById('uni-edit-logo').files[0];
+        if (nome) formData.append('nome', nome);
+        if (endereco) formData.append('endereco', endereco);
+        if (logoFile) formData.append('logo', logoFile);
+        setResponse('uni-edit-response', { status: '⏳ Salvando...' });
+        try {
+            const res = await fetch(`${BASE_URL}/api/unidades/${id}`, {
+                method: 'PUT', headers: { 'Authorization': `Bearer ${token}` }, body: formData
+            });
+            const data = await res.json();
+            setResponse('uni-edit-response', data, !res.ok);
+        } catch(e) { setResponse('uni-edit-response', { erro: e.message }, true); }
+    }
+
+    async function ativarUnidade() {
+        if (!token) { setResponse('uni-status-response', { erro: 'Faça login primeiro!' }, true); return; }
+        const id = document.getElementById('uni-status-id').value.trim();
+        if (!id) { setResponse('uni-status-response', { erro: 'Informe o ID' }, true); return; }
+        try {
+            const res = await fetch(`${BASE_URL}/api/unidades/${id}/ativar`, { method: 'PATCH', headers: authHeader() });
+            const data = await res.json();
+            setResponse('uni-status-response', data, !res.ok);
+        } catch(e) { setResponse('uni-status-response', { erro: e.message }, true); }
+    }
+
+    async function desativarUnidade() {
+        if (!token) { setResponse('uni-status-response', { erro: 'Faça login primeiro!' }, true); return; }
+        const id = document.getElementById('uni-status-id').value.trim();
+        if (!id) { setResponse('uni-status-response', { erro: 'Informe o ID' }, true); return; }
+        try {
+            const res = await fetch(`${BASE_URL}/api/unidades/${id}/desativar`, { method: 'PATCH', headers: authHeader() });
+            const data = await res.json();
+            setResponse('uni-status-response', data, !res.ok);
+        } catch(e) { setResponse('uni-status-response', { erro: e.message }, true); }
+    }
+
+    async function removerLogoUnidade() {
+        if (!token) { setResponse('uni-logo-del-response', { erro: 'Faça login primeiro!' }, true); return; }
+        const id = document.getElementById('uni-logo-del-id').value.trim();
+        if (!id) { setResponse('uni-logo-del-response', { erro: 'Informe o ID' }, true); return; }
+        try {
+            const res = await fetch(`${BASE_URL}/api/unidades/${id}/logo`, { method: 'DELETE', headers: authHeader() });
+            const data = await res.json();
+            setResponse('uni-logo-del-response', data, !res.ok);
+        } catch(e) { setResponse('uni-logo-del-response', { erro: e.message }, true); }
     }
 
 </script>

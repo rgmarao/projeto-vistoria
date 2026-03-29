@@ -10,6 +10,8 @@ import vistoriasRoutes from "./routes/vistorias.js";
 import ocorrenciasRoutes from "./routes/ocorrencias.js";
 import areasRoutes from './routes/areas.js';
 import empresasRoutes from './routes/empresas.js';
+import unidadesRoutes from './routes/unidades.js';
+
 
 const app = express();
 
@@ -35,6 +37,7 @@ app.get("/", (req, res) => {
 // Rotas da API
 app.use("/api/auth", authRoutes);
 app.use("/api/empresas", empresasRoutes);   // ✅ específica primeiro
+app.use("/api/unidades", unidadesRoutes);   // ✅ específica (multer: antes das genéricas)
 app.use("/api/vistorias", vistoriasRoutes); // ✅ específica primeiro
 app.use('/api', ocorrenciasRoutes);         // genérica
 app.use('/api', areasRoutes);               // genérica
