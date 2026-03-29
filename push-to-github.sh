@@ -1,8 +1,12 @@
 #!/bin/bash
 # Script para enviar o projeto ao GitHub
-# Execute este arquivo no Shell do Replit
+# Execute: bash push-to-github.sh
 
-GITHUB_TOKEN="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"
+if [ -z "$GITHUB_TOKEN" ]; then
+  echo "❌ GITHUB_TOKEN não encontrado. Verifique os Secrets do projeto."
+  exit 1
+fi
+
 REPO_URL="https://${GITHUB_TOKEN}@github.com/rgmarao/projeto-vistoria.git"
 
 echo "⚙️  Configurando Git..."
@@ -23,10 +27,12 @@ echo "🚀 Enviando para o GitHub..."
 git branch -M main
 git push -u origin main
 
-echo ""
-echo "✅ Código enviado com sucesso!"
-echo "🌐 Repositório: https://github.com/rgmarao/projeto-vistoria"
-
-# Remova o token do remote após o push por segurança
-git remote set-url origin "https://github.com/rgmarao/projeto-vistoria.git"
-echo "🔒 Token removido da URL remota por segurança."
+if [ $? -eq 0 ]; then
+  echo ""
+  echo "✅ Código enviado com sucesso!"
+  echo "🌐 https://github.com/rgmarao/projeto-vistoria"
+  # Remove token da URL remota por segurança
+  git remote set-url origin "https://github.com/rgmarao/projeto-vistoria.git"
+else
+  echo "❌ Erro ao enviar. Verifique o token e tente novamente."
+fi
