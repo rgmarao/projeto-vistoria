@@ -6,7 +6,6 @@ const router = express.Router();
 
 // ─────────────────────────────────────────────
 // POST /api/vistorias/:id/ocorrencias
-// Adicionar ocorrência a uma vistoria
 // ─────────────────────────────────────────────
 router.post('/vistorias/:id/ocorrencias', requireAuth, async (req, res) => {
   try {
@@ -17,10 +16,16 @@ router.post('/vistorias/:id/ocorrencias', requireAuth, async (req, res) => {
       descricao,
       status,
       recomendacao,
-      foto_1_url,
-      foto_2_url,
       origem
     } = req.body;
+
+    if (!descricao) {
+      return res.status(400).json({ error: 'Descrição é obrigatória' });
+    }
+
+    // Valida status
+    const statusValidos = ['ok', 'atencao', 'critico'];
+    const statusFinal = statusValidos.includes(status) ? status : 'ok';
 
     // Verifica se a vistoria existe e está em_andamento
     const { data: vistoria, error: errVistoria } = await supabase
@@ -39,12 +44,11 @@ router.post('/vistorias/:id/ocorrencias', requireAuth, async (req, res) => {
       });
     }
 
-    // Valida recomendação — só permitida em amarelo ou vermelho
-    const statusPermiteRecomendacao = ['amarelo', 'vermelho'];
+    // Recomendação só permitida em atencao ou critico
     const recomendacaoFinal =
-      status && statusPermiteRecomendacao.includes(status) ? recomendacao : null;
+      ['atencao', 'critico'].includes(statusFinal) ? (recomendacao || null) : null;
 
-    // Busca o próximo número de ocorrência para esta vistoria
+    // Próximo número de ocorrência
     const { count } = await supabase
       .from('ocorrencias')
       .select('id', { count: 'exact', head: true })
@@ -52,22 +56,21 @@ router.post('/vistorias/:id/ocorrencias', requireAuth, async (req, res) => {
 
     const numero_ocorrencia = (count || 0) + 1;
 
-    // Insere a ocorrência
     const { data: ocorrencia, error } = await supabase
       .from('ocorrencias')
       .insert({
         vistoria_id,
-        area_id: area_id || null,
-        item_id: item_id || null,
+        area_id:           area_id    || null,
+        item_id:           item_id    || null,
         numero_ocorrencia,
-        descricao: descricao || null,
-        status: status || 'sem_status',
-        recomendacao: recomendacaoFinal || null,
-        foto_1_url: foto_1_url || null,
-        foto_2_url: foto_2_url || null,
-        origem: origem || 'web',
-        criado_em: new Date().toISOString(),
-        atualizado_em: new Date().toISOString()
+        descricao,
+        status:            statusFinal,
+        recomendacao:      recomendacaoFinal,
+        foto_1_url:        null,
+        foto_2_url:        null,
+        origem:            origem     || 'vistoria',
+        criado_em:         new Date().toISOString(),
+        atualizado_em:     new Date().toISOString()
       })
       .select()
       .single();
@@ -82,6 +85,101 @@ router.post('/vistorias/:id/ocorrencias', requireAuth, async (req, res) => {
   } catch (err) {
     console.error('Erro ao criar ocorrência:', err);
     return res.status(500).json({ error: 'Erro interno ao criar ocorrência' });
+  }
+});
+
+// ─────────────────────────────────────────────
+// PUT /api/ocorrencias/:id
+// Editar ocorrência
+// ─────────────────────────────────────────────
+router.put('/ocorrencias/:id', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { descricao, status, recomendacao } = req.body;
+
+    // Valida status
+    const statusValidos = ['ok', 'atencao', 'critico'];
+    if (status && !statusValidos.includes(status)) {
+      return res.status(400).json({ error: `Status inválido. Use: ${statusValidos.join(', ')}` });
+    }
+
+    // Verifica se ocorrência existe
+    const { data: existente, error: errBusca } = await supabase
+      .from('ocorrencias')
+      .select('id, status')
+      .eq('id', id)
+      .single();
+
+    if (errBusca || !existente) {
+      return res.status(404).json({ error: 'Ocorrência não encontrada' });
+    }
+
+    const statusFinal = status || existente.status;
+
+    // Recomendação só permitida em atencao ou critico
+    const recomendacaoFinal =
+      ['atencao', 'critico'].includes(statusFinal) ? (recomendacao || null) : null;
+
+    const campos = {
+      ...(descricao && { descricao }),
+      status:       statusFinal,
+      recomendacao: recomendacaoFinal,
+      atualizado_em: new Date().toISOString()
+    };
+
+    const { data: ocorrencia, error } = await supabase
+      .from('ocorrencias')
+      .update(campos)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return res.status(200).json({
+      message: '✅ Ocorrência atualizada com sucesso',
+      ocorrencia
+    });
+
+  } catch (err) {
+    console.error('Erro ao editar ocorrência:', err);
+    return res.status(500).json({ error: 'Erro interno ao editar ocorrência' });
+  }
+});
+
+// ─────────────────────────────────────────────
+// DELETE /api/ocorrencias/:id
+// Remover ocorrência
+// ─────────────────────────────────────────────
+router.delete('/ocorrencias/:id', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Verifica se existe
+    const { data: existente, error: errBusca } = await supabase
+      .from('ocorrencias')
+      .select('id')
+      .eq('id', id)
+      .single();
+
+    if (errBusca || !existente) {
+      return res.status(404).json({ error: 'Ocorrência não encontrada' });
+    }
+
+    const { error } = await supabase
+      .from('ocorrencias')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+
+    return res.status(200).json({
+      message: '✅ Ocorrência removida com sucesso'
+    });
+
+  } catch (err) {
+    console.error('Erro ao remover ocorrência:', err);
+    return res.status(500).json({ error: 'Erro interno ao remover ocorrência' });
   }
 });
 

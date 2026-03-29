@@ -98,3 +98,32 @@
 ## 📁 Estrutura de Arquivos Atual
 
 / ├── index.js ├── package.json ├── .env ├── public/ │ └── test.html └── src/ ├── app.js ├── config/ │ └── supabase.js ├── middlewares/ │ └── auth.js └── routes/ ├── auth.js ├── vistorias.js └── ocorrencias.js ← novo
+
+## ⚠️ Lições Aprendidas — Erros Corrigidos
+
+### 1. Named Export vs Default Export
+- `src/middlewares/auth.js` usa **named export**:
+  ```javascript
+  export const requireAuth = ...
+Importar sempre assim (em qualquer rota):
+javascript
+
+
+import { requireAuth } from '../middlewares/auth.js';
+❌ Errado: import authMiddleware from '../middlewares/auth.js'
+2. Consistência do nome da variável
+Após corrigir o import, usar o mesmo nome na rota:
+javascript
+
+
+router.post('/rota', requireAuth, async (req, res) => { ... })
+3. Porta no Replit
+O Replit exige porta 5000
+Sempre usar: process.env.PORT || 5000
+❌ Não usar porta 3000 fixa
+
+
+
+---
+
+Isso é muito útil para as próximas fases, especialmente quando criarmos as rotas de **fotos** e **áreas/itens**. 

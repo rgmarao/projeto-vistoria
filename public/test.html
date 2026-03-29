@@ -36,6 +36,10 @@
             border-radius: 5px;
             font-size: 14px;
         }
+        input[type="file"] {
+            padding: 6px;
+            background: #fafafa;
+        }
         button {
             width: 100%;
             padding: 10px;
@@ -55,6 +59,8 @@
         .btn-get       { background: #00BCD4; }
         .btn-patch     { background: #8BC34A; }
         .btn-delete    { background: #e53935; }
+        .btn-put       { background: #7B1FA2; }
+        .btn-upload    { background: #0097A7; }
         button:hover   { opacity: 0.85; }
         .response {
             margin-top: 15px;
@@ -81,6 +87,41 @@
         label { font-size: 13px; color: #777; margin-bottom: 4px; display: block; }
         .row { display: flex; gap: 10px; }
         .row button { flex: 1; }
+        .foto-preview-box {
+            margin-top: 12px;
+            display: none;
+        }
+        .foto-preview-box img {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            margin-top: 8px;
+            display: block;
+        }
+        .fotos-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+        }
+        .fotos-grid .slot-box {
+            text-align: center;
+            display: none;
+        }
+        .fotos-grid .slot-box img {
+            max-width: 200px;
+            max-height: 200px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            display: block;
+        }
+        .fotos-grid .slot-box button {
+            width: auto;
+            padding: 6px 12px;
+            margin-top: 8px;
+            font-size: 12px;
+        }
     </style>
 </head>
 <body>
@@ -137,6 +178,39 @@
     </div>
 
     <!-- ══════════════════════════════════════ -->
+    <div class="section-title">🏗️ ÁREAS E ITENS</div>
+    <!-- ══════════════════════════════════════ -->
+
+    <!-- LISTAR ÁREAS -->
+    <div class="card">
+        <h2>📐 Listar Áreas da Unidade</h2>
+        <label>Unidade ID (uuid)</label>
+        <input type="text" id="area-unidade-id" placeholder="uuid da unidade"
+            value="1ffd7717-ab3b-4a19-8316-22df785e6158" />
+        <button class="btn-get" onclick="listarAreas()">Buscar Áreas</button>
+        <div class="response" id="area-response">Aguardando...</div>
+    </div>
+
+    <!-- LISTAR ITENS DE UMA ÁREA -->
+    <div class="card">
+        <h2>🔩 Listar Itens de uma Área</h2>
+        <label>Área ID (uuid)</label>
+        <input type="text" id="item-area-id" placeholder="uuid da área (preenchido automaticamente ao buscar áreas)" />
+        <button class="btn-get" onclick="listarItens()">Buscar Itens</button>
+        <div class="response" id="item-response">Aguardando...</div>
+    </div>
+
+    <!-- CHECKLIST COMPLETO -->
+    <div class="card">
+        <h2>📋 Checklist Completo da Unidade</h2>
+        <label>Unidade ID (uuid)</label>
+        <input type="text" id="checklist-unidade-id" placeholder="uuid da unidade"
+            value="1ffd7717-ab3b-4a19-8316-22df785e6158" />
+        <button class="btn-get" onclick="buscarChecklist()">Buscar Checklist</button>
+        <div class="response" id="checklist-response">Aguardando...</div>
+    </div>
+
+    <!-- ══════════════════════════════════════ -->
     <div class="section-title">📋 VISTORIAS</div>
     <!-- ══════════════════════════════════════ -->
 
@@ -186,6 +260,191 @@
         <div class="response" id="v-acao-response">Aguardando...</div>
     </div>
 
+    <!-- ══════════════════════════════════════ -->
+    <div class="section-title">🔎 OCORRÊNCIAS</div>
+    <!-- ══════════════════════════════════════ -->
+
+    <!-- CRIAR OCORRÊNCIA -->
+    <div class="card">
+        <h2>➕ Criar Ocorrência</h2>
+        <label>Vistoria ID (uuid)</label>
+        <input type="text" id="oc-vistoria-id" placeholder="uuid da vistoria" />
+        <label>Área ID (opcional)</label>
+        <input type="text" id="oc-area-id" placeholder="uuid da área (opcional)" />
+        <label>Item ID (opcional)</label>
+        <input type="text" id="oc-item-id" placeholder="uuid do item (opcional)" />
+        <label>Descrição</label>
+        <input type="text" id="oc-descricao" placeholder="Descrição da ocorrência" />
+        <label>Status</label>
+        <select id="oc-status">
+            <option value="ok">ok</option>
+            <option value="atencao">atencao</option>
+            <option value="critico">critico</option>
+        </select>
+        <label>Recomendação (opcional)</label>
+        <input type="text" id="oc-recomendacao" placeholder="Recomendação (opcional)" />
+        <label>Origem</label>
+        <select id="oc-origem">
+            <option value="vistoria">vistoria</option>
+            <option value="morador">morador</option>
+        </select>
+        <button class="btn-post" onclick="criarOcorrencia()">Criar Ocorrência</button>
+        <div class="response" id="oc-criar-response">Aguardando...</div>
+    </div>
+
+    <!-- EDITAR OCORRÊNCIA -->
+    <div class="card">
+        <h2>✏️ Editar Ocorrência</h2>
+        <label>Ocorrência ID (uuid)</label>
+        <input type="text" id="oc-edit-id" placeholder="uuid da ocorrência" />
+        <label>Nova Descrição</label>
+        <input type="text" id="oc-edit-descricao" placeholder="Nova descrição" />
+        <label>Novo Status</label>
+        <select id="oc-edit-status">
+            <option value="ok">ok</option>
+            <option value="atencao">atencao</option>
+            <option value="critico">critico</option>
+        </select>
+        <label>Nova Recomendação (opcional)</label>
+        <input type="text" id="oc-edit-recomendacao" placeholder="Nova recomendação (opcional)" />
+        <button class="btn-put" onclick="editarOcorrencia()">Editar Ocorrência</button>
+        <div class="response" id="oc-edit-response">Aguardando...</div>
+    </div>
+
+    <!-- REMOVER OCORRÊNCIA -->
+    <div class="card">
+        <h2>🗑️ Remover Ocorrência</h2>
+        <label>Ocorrência ID (uuid)</label>
+        <input type="text" id="oc-delete-id" placeholder="uuid da ocorrência" />
+        <button class="btn-delete" onclick="removerOcorrencia()">Remover Ocorrência</button>
+        <div class="response" id="oc-delete-response">Aguardando...</div>
+    </div>
+
+    <!-- ══════════════════════════════════════ -->
+    <div class="section-title">📸 UPLOAD DE FOTOS</div>
+    <!-- ══════════════════════════════════════ -->
+
+    <!-- UPLOAD DE FOTO -->
+    <div class="card">
+        <h2>📤 Upload de Foto (Slot 1 ou 2)</h2>
+        <label>Ocorrência ID (uuid)</label>
+        <input type="text" id="foto-ocorrencia-id" placeholder="uuid da ocorrência (preenchido automaticamente ao criar)" />
+        <label>Slot</label>
+        <select id="foto-slot">
+            <option value="1">Slot 1</option>
+            <option value="2">Slot 2</option>
+        </select>
+        <label>Arquivo (JPEG, PNG ou WEBP — máx. 10MB)</label>
+        <input type="file" id="foto-arquivo" accept="image/jpeg,image/png,image/webp" />
+        <button class="btn-upload" onclick="uploadFoto()">📤 Enviar Foto</button>
+        <div class="response" id="foto-upload-response">Aguardando...</div>
+        <div class="foto-preview-box" id="foto-upload-preview">
+            <label>Preview da foto enviada:</label>
+            <img id="foto-upload-preview-img" src="" alt="Preview" />
+        </div>
+    </div>
+
+    <!-- BUSCAR FOTOS -->
+    <div class="card">
+        <h2>🔍 Buscar Fotos da Ocorrência</h2>
+        <label>Ocorrência ID (uuid)</label>
+        <input type="text" id="foto-buscar-id" placeholder="uuid da ocorrência" />
+        <button class="btn-get" onclick="buscarFotos()">🔍 Buscar Fotos</button>
+        <div class="response" id="foto-buscar-response">Aguardando...</div>
+        <div class="fotos-grid" id="fotos-grid">
+            <div class="slot-box" id="slot-box-1">
+                <p><strong>Slot 1</strong></p>
+                <img id="slot-img-1" src="" alt="Foto Slot 1" />
+                <button class="btn-delete" onclick="deletarFotoDoGrid(1)">🗑️ Remover Slot 1</button>
+            </div>
+            <div class="slot-box" id="slot-box-2">
+                <p><strong>Slot 2</strong></p>
+                <img id="slot-img-2" src="" alt="Foto Slot 2" />
+                <button class="btn-delete" onclick="deletarFotoDoGrid(2)">🗑️ Remover Slot 2</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- DELETAR FOTO -->
+    <div class="card">
+        <h2>🗑️ Deletar Foto por Slot</h2>
+        <label>Ocorrência ID (uuid)</label>
+        <input type="text" id="foto-deletar-id" placeholder="uuid da ocorrência" />
+        <label>Slot</label>
+        <select id="foto-deletar-slot">
+            <option value="1">Slot 1</option>
+            <option value="2">Slot 2</option>
+        </select>
+        <button class="btn-delete" onclick="deletarFotoManual()">🗑️ Deletar Foto</button>
+        <div class="response" id="foto-deletar-response">Aguardando...</div>
+    </div>
+
+    <!-- ══════════════════════════════════════ -->
+    <div class="section-title">🏢 EMPRESAS</div>
+    <!-- ══════════════════════════════════════ -->
+
+    <!-- LISTAR EMPRESAS -->
+    <div class="card">
+        <h2>📄 Listar Empresas</h2>
+        <label>Filtrar por Status (opcional)</label>
+        <select id="emp-filtro-ativo">
+            <option value="">Todos</option>
+            <option value="true">Ativas</option>
+            <option value="false">Inativas</option>
+        </select>
+        <button class="btn-get" onclick="listarEmpresas()">Listar Empresas</button>
+        <div class="response" id="emp-listar-response">Aguardando...</div>
+    </div>
+
+    <!-- DETALHE EMPRESA -->
+    <div class="card">
+        <h2>🔍 Detalhe da Empresa</h2>
+        <label>Empresa ID (uuid)</label>
+        <input type="text" id="emp-detalhe-id" placeholder="uuid da empresa (preenchido ao criar)" />
+        <button class="btn-get" onclick="detalheEmpresa()">Buscar Empresa</button>
+        <div class="response" id="emp-detalhe-response">Aguardando...</div>
+    </div>
+
+    <!-- CRIAR EMPRESA -->
+    <div class="card">
+        <h2>➕ Criar Empresa</h2>
+        <label>Nome *</label>
+        <input type="text" id="emp-criar-nome" placeholder="Nome da empresa" />
+        <label>CNPJ</label>
+        <input type="text" id="emp-criar-cnpj" placeholder="00.000.000/0000-00" />
+        <label>Logo URL (opcional)</label>
+        <input type="text" id="emp-criar-logo" placeholder="https://..." />
+        <button class="btn-post" onclick="criarEmpresa()">Criar Empresa</button>
+        <div class="response" id="emp-criar-response">Aguardando...</div>
+    </div>
+
+    <!-- EDITAR EMPRESA -->
+    <div class="card">
+        <h2>✏️ Editar Empresa</h2>
+        <label>Empresa ID (uuid)</label>
+        <input type="text" id="emp-edit-id" placeholder="uuid da empresa" />
+        <label>Novo Nome</label>
+        <input type="text" id="emp-edit-nome" placeholder="Novo nome" />
+        <label>Novo CNPJ</label>
+        <input type="text" id="emp-edit-cnpj" placeholder="00.000.000/0000-00" />
+        <label>Nova Logo URL</label>
+        <input type="text" id="emp-edit-logo" placeholder="https://..." />
+        <button class="btn-put" onclick="editarEmpresa()">Salvar Alterações</button>
+        <div class="response" id="emp-edit-response">Aguardando...</div>
+    </div>
+
+    <!-- ATIVAR / DESATIVAR -->
+    <div class="card">
+        <h2>🔄 Ativar / Desativar Empresa</h2>
+        <label>Empresa ID (uuid)</label>
+        <input type="text" id="emp-status-id" placeholder="uuid da empresa" />
+        <div class="row">
+            <button class="btn-patch" onclick="ativarEmpresa()">✅ Ativar</button>
+            <button class="btn-delete" onclick="desativarEmpresa()">🚫 Desativar</button>
+        </div>
+        <div class="response" id="emp-status-response">Aguardando...</div>
+    </div>
+
 </div>
 
 <script>
@@ -207,6 +466,8 @@
         el.textContent = JSON.stringify(data, null, 2);
         el.className = 'response ' + (isError ? 'error' : 'success');
     }
+
+    function getToken() { return token; }
 
     function authHeader() {
         return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
@@ -278,6 +539,63 @@
         setResponse('logout-response', { mensagem: '✅ Logout realizado com sucesso!' });
     }
 
+    // ─── ÁREAS E ITENS ──────────────────────────
+
+    async function listarAreas() {
+        if (!token) { setResponse('area-response', { erro: 'Faça login primeiro!' }, true); return; }
+        const unidadeId = document.getElementById('area-unidade-id').value;
+        if (!unidadeId) { setResponse('area-response', { erro: 'Informe o ID da unidade' }, true); return; }
+        try {
+            const res = await fetch(`${BASE_URL}/api/unidades/${unidadeId}/areas`, {
+                headers: authHeader()
+            });
+            const data = await res.json();
+            setResponse('area-response', data, !res.ok);
+            if (Array.isArray(data) && data.length > 0) {
+                document.getElementById('item-area-id').value = data[0].id;
+            }
+        } catch(e) {
+            setResponse('area-response', { erro: e.message }, true);
+        }
+    }
+
+    async function listarItens() {
+        if (!token) { setResponse('item-response', { erro: 'Faça login primeiro!' }, true); return; }
+        const areaId = document.getElementById('item-area-id').value;
+        if (!areaId) { setResponse('item-response', { erro: 'Informe o ID da área' }, true); return; }
+        try {
+            const res = await fetch(`${BASE_URL}/api/areas/${areaId}/itens`, {
+                headers: authHeader()
+            });
+            const data = await res.json();
+            setResponse('item-response', data, !res.ok);
+        } catch(e) {
+            setResponse('item-response', { erro: e.message }, true);
+        }
+    }
+
+    async function buscarChecklist() {
+        if (!token) { setResponse('checklist-response', { erro: 'Faça login primeiro!' }, true); return; }
+        const unidadeId = document.getElementById('checklist-unidade-id').value;
+        if (!unidadeId) { setResponse('checklist-response', { erro: 'Informe o ID da unidade' }, true); return; }
+        try {
+            const res = await fetch(`${BASE_URL}/api/unidades/${unidadeId}/checklist`, {
+                headers: authHeader()
+            });
+            const data = await res.json();
+            setResponse('checklist-response', data, !res.ok);
+            if (Array.isArray(data) && data.length > 0) {
+                const primeiraArea = data[0];
+                document.getElementById('oc-area-id').value = primeiraArea.area_id;
+                if (primeiraArea.itens?.length > 0) {
+                    document.getElementById('oc-item-id').value = primeiraArea.itens[0].item_id;
+                }
+            }
+        } catch(e) {
+            setResponse('checklist-response', { erro: e.message }, true);
+        }
+    }
+
     // ─── VISTORIAS ──────────────────────────────
 
     async function criarVistoria() {
@@ -292,11 +610,10 @@
             });
             const data = await res.json();
             setResponse('v-criar-response', data, !res.ok);
-
-            // Preenche automaticamente os campos de ID
             if (data.vistoria?.id) {
-                document.getElementById('v-detalhe-id').value = data.vistoria.id;
-                document.getElementById('v-acao-id').value = data.vistoria.id;
+                document.getElementById('v-detalhe-id').value   = data.vistoria.id;
+                document.getElementById('v-acao-id').value      = data.vistoria.id;
+                document.getElementById('oc-vistoria-id').value = data.vistoria.id;
             }
         } catch(e) {
             setResponse('v-criar-response', { erro: e.message }, true);
@@ -305,11 +622,11 @@
 
     async function listarVistorias() {
         if (!token) { setResponse('v-listar-response', { erro: 'Faça login primeiro!' }, true); return; }
-        const status    = document.getElementById('v-filtro-status').value;
-        const unidade   = document.getElementById('v-filtro-unidade').value;
+        const status  = document.getElementById('v-filtro-status').value;
+        const unidade = document.getElementById('v-filtro-unidade').value;
         let params = new URLSearchParams();
-        if (status)   params.append('status', status);
-        if (unidade)  params.append('unidade_id', unidade);
+        if (status)  params.append('status', status);
+        if (unidade) params.append('unidade_id', unidade);
         try {
             const res = await fetch(`${BASE_URL}/api/vistorias?${params.toString()}`, {
                 headers: authHeader()
@@ -367,6 +684,286 @@
             setResponse('v-acao-response', { erro: e.message }, true);
         }
     }
+
+    // ─── OCORRÊNCIAS ────────────────────────────
+
+    async function criarOcorrencia() {
+        if (!token) { setResponse('oc-criar-response', { erro: 'Faça login primeiro!' }, true); return; }
+        const vistoriaId = document.getElementById('oc-vistoria-id').value;
+        if (!vistoriaId) { setResponse('oc-criar-response', { erro: 'Informe o ID da vistoria' }, true); return; }
+        const descricao = document.getElementById('oc-descricao').value;
+        if (!descricao) { setResponse('oc-criar-response', { erro: 'Informe a descrição' }, true); return; }
+        const body = {
+            area_id:      document.getElementById('oc-area-id').value      || null,
+            item_id:      document.getElementById('oc-item-id').value      || null,
+            descricao:    descricao,
+            status:       document.getElementById('oc-status').value,
+            recomendacao: document.getElementById('oc-recomendacao').value || null,
+            origem:       document.getElementById('oc-origem').value,
+        };
+        try {
+            const res = await fetch(`${BASE_URL}/api/vistorias/${vistoriaId}/ocorrencias`, {
+                method: 'POST',
+                headers: authHeader(),
+                body: JSON.stringify(body)
+            });
+            const data = await res.json();
+            setResponse('oc-criar-response', data, !res.ok);
+            if (data.ocorrencia?.id) {
+                document.getElementById('oc-edit-id').value         = data.ocorrencia.id;
+                document.getElementById('oc-delete-id').value       = data.ocorrencia.id;
+                document.getElementById('foto-ocorrencia-id').value = data.ocorrencia.id;
+                document.getElementById('foto-buscar-id').value     = data.ocorrencia.id;
+                document.getElementById('foto-deletar-id').value    = data.ocorrencia.id;
+            }
+        } catch(e) {
+            setResponse('oc-criar-response', { erro: e.message }, true);
+        }
+    }
+
+    async function editarOcorrencia() {
+        if (!token) { setResponse('oc-edit-response', { erro: 'Faça login primeiro!' }, true); return; }
+        const id = document.getElementById('oc-edit-id').value;
+        if (!id) { setResponse('oc-edit-response', { erro: 'Informe o ID da ocorrência' }, true); return; }
+        const body = {
+            descricao:    document.getElementById('oc-edit-descricao').value    || null,
+            status:       document.getElementById('oc-edit-status').value,
+            recomendacao: document.getElementById('oc-edit-recomendacao').value || null,
+        };
+        try {
+            const res = await fetch(`${BASE_URL}/api/ocorrencias/${id}`, {
+                method: 'PUT',
+                headers: authHeader(),
+                body: JSON.stringify(body)
+            });
+            const data = await res.json();
+            setResponse('oc-edit-response', data, !res.ok);
+        } catch(e) {
+            setResponse('oc-edit-response', { erro: e.message }, true);
+        }
+    }
+
+    async function removerOcorrencia() {
+        if (!token) { setResponse('oc-delete-response', { erro: 'Faça login primeiro!' }, true); return; }
+        const id = document.getElementById('oc-delete-id').value;
+        if (!id) { setResponse('oc-delete-response', { erro: 'Informe o ID da ocorrência' }, true); return; }
+        try {
+            const res = await fetch(`${BASE_URL}/api/ocorrencias/${id}`, {
+                method: 'DELETE',
+                headers: authHeader()
+            });
+            const data = await res.json();
+            setResponse('oc-delete-response', data, !res.ok);
+        } catch(e) {
+            setResponse('oc-delete-response', { erro: e.message }, true);
+        }
+    }
+
+    // ─── FOTOS ──────────────────────────────────
+
+    async function uploadFoto() {
+        if (!token) { setResponse('foto-upload-response', { erro: 'Faça login primeiro!' }, true); return; }
+        const ocorrenciaId = document.getElementById('foto-ocorrencia-id').value.trim();
+        const slot         = document.getElementById('foto-slot').value;
+        const arquivo      = document.getElementById('foto-arquivo').files[0];
+
+        if (!ocorrenciaId) { setResponse('foto-upload-response', { erro: 'Informe o ID da ocorrência.' }, true); return; }
+        if (!arquivo)      { setResponse('foto-upload-response', { erro: 'Selecione um arquivo.' }, true); return; }
+
+        const formData = new FormData();
+        formData.append('foto', arquivo);
+        formData.append('slot', slot);
+
+        setResponse('foto-upload-response', { status: '⏳ Enviando...' });
+        document.getElementById('foto-upload-preview').style.display = 'none';
+
+        try {
+            const res = await fetch(`${BASE_URL}/api/ocorrencias/${ocorrenciaId}/fotos`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: formData
+            });
+            const data = await res.json();
+            setResponse('foto-upload-response', data, !res.ok);
+
+            if (data.url_visualizacao) {
+                document.getElementById('foto-upload-preview-img').src = data.url_visualizacao;
+                document.getElementById('foto-upload-preview').style.display = 'block';
+            }
+        } catch(e) {
+            setResponse('foto-upload-response', { erro: e.message }, true);
+        }
+    }
+
+    async function buscarFotos() {
+        if (!token) { setResponse('foto-buscar-response', { erro: 'Faça login primeiro!' }, true); return; }
+        const ocorrenciaId = document.getElementById('foto-buscar-id').value.trim();
+        if (!ocorrenciaId) { setResponse('foto-buscar-response', { erro: 'Informe o ID da ocorrência.' }, true); return; }
+
+        document.getElementById('slot-box-1').style.display = 'none';
+        document.getElementById('slot-box-2').style.display = 'none';
+        document.getElementById('fotos-grid').dataset.ocorrenciaId = ocorrenciaId;
+
+        try {
+            const res = await fetch(`${BASE_URL}/api/ocorrencias/${ocorrenciaId}/fotos`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json();
+            setResponse('foto-buscar-response', data, !res.ok);
+
+            if (data.fotos?.foto_1?.url) {
+                document.getElementById('slot-img-1').src = data.fotos.foto_1.url;
+                document.getElementById('slot-box-1').style.display = 'block';
+            }
+            if (data.fotos?.foto_2?.url) {
+                document.getElementById('slot-img-2').src = data.fotos.foto_2.url;
+                document.getElementById('slot-box-2').style.display = 'block';
+            }
+        } catch(e) {
+            setResponse('foto-buscar-response', { erro: e.message }, true);
+        }
+    }
+
+    async function deletarFotoDoGrid(slot) {
+        const ocorrenciaId = document.getElementById('fotos-grid').dataset.ocorrenciaId;
+        await _deletarFoto(ocorrenciaId, slot, 'foto-buscar-response');
+        buscarFotos();
+    }
+
+    async function deletarFotoManual() {
+        if (!token) { setResponse('foto-deletar-response', { erro: 'Faça login primeiro!' }, true); return; }
+        const ocorrenciaId = document.getElementById('foto-deletar-id').value.trim();
+        const slot         = document.getElementById('foto-deletar-slot').value;
+        await _deletarFoto(ocorrenciaId, slot, 'foto-deletar-response');
+    }
+
+    async function _deletarFoto(ocorrenciaId, slot, responseId) {
+        if (!ocorrenciaId) { setResponse(responseId, { erro: 'Informe o ID da ocorrência.' }, true); return; }
+        try {
+            const res = await fetch(`${BASE_URL}/api/ocorrencias/${ocorrenciaId}/fotos/${slot}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json();
+            setResponse(responseId, data, !res.ok);
+        } catch(e) {
+            setResponse(responseId, { erro: e.message }, true);
+        }
+    }
+
+    // ─── EMPRESAS ───────────────────────────────
+
+    async function listarEmpresas() {
+        if (!token) { setResponse('emp-listar-response', { erro: 'Faça login primeiro!' }, true); return; }
+        const ativo = document.getElementById('emp-filtro-ativo').value;
+        const params = new URLSearchParams();
+        if (ativo !== '') params.append('ativo', ativo);
+        try {
+            const res = await fetch(`${BASE_URL}/api/empresas?${params.toString()}`, {
+                headers: authHeader()
+            });
+            const data = await res.json();
+            setResponse('emp-listar-response', data, !res.ok);
+        } catch(e) {
+            setResponse('emp-listar-response', { erro: e.message }, true);
+        }
+    }
+
+    async function detalheEmpresa() {
+        if (!token) { setResponse('emp-detalhe-response', { erro: 'Faça login primeiro!' }, true); return; }
+        const id = document.getElementById('emp-detalhe-id').value.trim();
+        if (!id) { setResponse('emp-detalhe-response', { erro: 'Informe o ID da empresa' }, true); return; }
+        try {
+            const res = await fetch(`${BASE_URL}/api/empresas/${id}`, {
+                headers: authHeader()
+            });
+            const data = await res.json();
+            setResponse('emp-detalhe-response', data, !res.ok);
+        } catch(e) {
+            setResponse('emp-detalhe-response', { erro: e.message }, true);
+        }
+    }
+
+    async function criarEmpresa() {
+        if (!token) { setResponse('emp-criar-response', { erro: 'Faça login primeiro!' }, true); return; }
+        const nome     = document.getElementById('emp-criar-nome').value.trim();
+        const cnpj     = document.getElementById('emp-criar-cnpj').value.trim();
+        const logo_url = document.getElementById('emp-criar-logo').value.trim();
+        if (!nome) { setResponse('emp-criar-response', { erro: 'Nome é obrigatório' }, true); return; }
+        try {
+            const res = await fetch(`${BASE_URL}/api/empresas`, {
+                method: 'POST',
+                headers: authHeader(),
+                body: JSON.stringify({ nome, cnpj: cnpj || null, logo_url: logo_url || null })
+            });
+            const data = await res.json();
+            setResponse('emp-criar-response', data, !res.ok);
+            if (data.data?.id) {
+                document.getElementById('emp-detalhe-id').value = data.data.id;
+                document.getElementById('emp-edit-id').value    = data.data.id;
+                document.getElementById('emp-status-id').value  = data.data.id;
+            }
+        } catch(e) {
+            setResponse('emp-criar-response', { erro: e.message }, true);
+        }
+    }
+
+    async function editarEmpresa() {
+        if (!token) { setResponse('emp-edit-response', { erro: 'Faça login primeiro!' }, true); return; }
+        const id       = document.getElementById('emp-edit-id').value.trim();
+        const nome     = document.getElementById('emp-edit-nome').value.trim();
+        const cnpj     = document.getElementById('emp-edit-cnpj').value.trim();
+        const logo_url = document.getElementById('emp-edit-logo').value.trim();
+        if (!id) { setResponse('emp-edit-response', { erro: 'Informe o ID da empresa' }, true); return; }
+        const body = {};
+        if (nome)     body.nome     = nome;
+        if (cnpj)     body.cnpj     = cnpj;
+        if (logo_url) body.logo_url = logo_url;
+        try {
+            const res = await fetch(`${BASE_URL}/api/empresas/${id}`, {
+                method: 'PUT',
+                headers: authHeader(),
+                body: JSON.stringify(body)
+            });
+            const data = await res.json();
+            setResponse('emp-edit-response', data, !res.ok);
+        } catch(e) {
+            setResponse('emp-edit-response', { erro: e.message }, true);
+        }
+    }
+
+    async function ativarEmpresa() {
+        if (!token) { setResponse('emp-status-response', { erro: 'Faça login primeiro!' }, true); return; }
+        const id = document.getElementById('emp-status-id').value.trim();
+        if (!id) { setResponse('emp-status-response', { erro: 'Informe o ID da empresa' }, true); return; }
+        try {
+            const res = await fetch(`${BASE_URL}/api/empresas/${id}/ativar`, {
+                method: 'PATCH',
+                headers: authHeader()
+            });
+            const data = await res.json();
+            setResponse('emp-status-response', data, !res.ok);
+        } catch(e) {
+            setResponse('emp-status-response', { erro: e.message }, true);
+        }
+    }
+
+    async function desativarEmpresa() {
+        if (!token) { setResponse('emp-status-response', { erro: 'Faça login primeiro!' }, true); return; }
+        const id = document.getElementById('emp-status-id').value.trim();
+        if (!id) { setResponse('emp-status-response', { erro: 'Informe o ID da empresa' }, true); return; }
+        try {
+            const res = await fetch(`${BASE_URL}/api/empresas/${id}/desativar`, {
+                method: 'PATCH',
+                headers: authHeader()
+            });
+            const data = await res.json();
+            setResponse('emp-status-response', data, !res.ok);
+        } catch(e) {
+            setResponse('emp-status-response', { erro: e.message }, true);
+        }
+    }
+
 </script>
 
 </body>

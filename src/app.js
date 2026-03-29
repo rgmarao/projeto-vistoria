@@ -5,8 +5,11 @@ import { fileURLToPath } from "url";
 
 // Rotas
 import authRoutes from "./routes/auth.js";
+import fotosRoutes from './routes/fotos.js';
 import vistoriasRoutes from "./routes/vistorias.js";
 import ocorrenciasRoutes from "./routes/ocorrencias.js";
+import areasRoutes from './routes/areas.js';
+import empresasRoutes from './routes/empresas.js';
 
 const app = express();
 
@@ -31,8 +34,11 @@ app.get("/", (req, res) => {
 
 // Rotas da API
 app.use("/api/auth", authRoutes);
-app.use("/api/vistorias", vistoriasRoutes);
-app.use('/api', ocorrenciasRoutes);
+app.use("/api/empresas", empresasRoutes);   // ✅ específica primeiro
+app.use("/api/vistorias", vistoriasRoutes); // ✅ específica primeiro
+app.use('/api', ocorrenciasRoutes);         // genérica
+app.use('/api', areasRoutes);               // genérica
+app.use('/api', fotosRoutes);               // genérica por último
 
 // Rota não encontrada
 app.use((req, res) => {

@@ -17,7 +17,6 @@ router.post('/', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'unidade_id é obrigatório' });
     }
 
-    // Busca perfil do usuário
     const { data: perfil, error: perfilError } = await supabase
       .from('perfis')
       .select('perfil')
@@ -69,7 +68,6 @@ router.get('/', requireAuth, async (req, res) => {
   try {
     const { status, unidade_id } = req.query;
 
-    // Busca perfil do usuário
     const { data: perfil, error: perfilError } = await supabase
       .from('perfis')
       .select('perfil')
@@ -89,9 +87,7 @@ router.get('/', requireAuth, async (req, res) => {
       `)
       .order('data_criacao', { ascending: false });
 
-    // Restrições por perfil
     if (perfil.perfil === 'usuario') {
-      // Busca apenas unidades vinculadas ao usuário
       const { data: vinculos } = await supabase
         .from('usuario_unidades')
         .select('unidade_id')
@@ -101,10 +97,9 @@ router.get('/', requireAuth, async (req, res) => {
 
       query = query
         .in('unidade_id', unidadeIds)
-        .eq('status', 'publicada'); // usuário só vê publicadas
+        .eq('status', 'publicada');
     }
 
-    // Filtros opcionais
     if (status && perfil.perfil !== 'usuario') {
       query = query.eq('status', status);
     }
@@ -133,12 +128,12 @@ router.get('/', requireAuth, async (req, res) => {
 // ─────────────────────────────────────────
 // GET /api/vistorias/:id
 // Retorna detalhe completo de uma vistoria
+// Inclui URLs assinadas das fotos das ocorrências
 // ─────────────────────────────────────────
 router.get('/:id', requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Busca perfil do usuário
     const { data: perfil, error: perfilError } = await supabase
       .from('perfis')
       .select('perfil')
@@ -178,12 +173,44 @@ router.get('/:id', requireAuth, async (req, res) => {
       return res.status(404).json({ error: 'Vistoria não encontrada' });
     }
 
-    // Usuário comum só vê vistorias publicadas
     if (perfil.perfil === 'usuario' && data.status !== 'publicada') {
       return res.status(403).json({ error: 'Acesso negado' });
     }
 
-    return res.json({ vistoria: data });
+    // ✅ Gera URLs assinadas para fotos de cada ocorrência
+    const ocorrenciasComFotos = await Promise.all(
+      (data.ocorrencias || []).map(async (oc) => {
+        let foto_1_signed = null;
+        let foto_2_signed = null;
+
+        if (oc.foto_1_url) {
+          const { data: s1 } = await supabase.storage
+            .from('fotos')
+            .createSignedUrl(oc.foto_1_url, 3600);
+          foto_1_signed = s1?.signedUrl || null;
+        }
+
+        if (oc.foto_2_url) {
+          const { data: s2 } = await supabase.storage
+            .from('fotos')
+            .createSignedUrl(oc.foto_2_url, 3600);
+          foto_2_signed = s2?.signedUrl || null;
+        }
+
+        return {
+          ...oc,
+          foto_1_signed, // ✅ URL assinada pronta para exibir
+          foto_2_signed,
+        };
+      })
+    );
+
+    return res.json({
+      vistoria: {
+        ...data,
+        ocorrencias: ocorrenciasComFotos
+      }
+    });
 
   } catch (err) {
     console.error('Erro ao buscar vistoria:', err);
@@ -210,7 +237,6 @@ router.patch('/:id/finalizar', requireAuth, async (req, res) => {
       return res.status(403).json({ error: 'Sem permissão para finalizar vistorias' });
     }
 
-    // Verifica se vistoria existe e está em_andamento
     const { data: vistoria } = await supabase
       .from('vistorias')
       .select('status')
@@ -270,7 +296,6 @@ router.patch('/:id/publicar', requireAuth, async (req, res) => {
       return res.status(403).json({ error: 'Sem permissão para publicar vistorias' });
     }
 
-    // Verifica se vistoria existe e está finalizada
     const { data: vistoria } = await supabase
       .from('vistorias')
       .select('status')
