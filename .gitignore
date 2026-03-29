@@ -1,6 +1,8 @@
 node_modules
 dist
 .DS_Store
-server/public
-vite.config.ts.*
+.env
+.env.local
 *.tar.gz
+npm-debug.log*
+*.log
