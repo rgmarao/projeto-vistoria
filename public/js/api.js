@@ -48,7 +48,7 @@ export const auth = {
     });
   },
   async logout() {
-    await apiFetch('/api/auth/logout', { method: 'POST' });
+    try { await apiFetch('/api/auth/logout', { method: 'POST' }); } catch (_) {}
     clearSession();
   }
 };
