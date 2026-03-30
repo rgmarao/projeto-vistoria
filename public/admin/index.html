@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin — Dashboard</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <style>
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    .stat-card {
+      background: #fff;
+      border-radius: 10px;
+      padding: 22px 24px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .stat-icon {
+      font-size: 32px;
+      line-height: 1;
+    }
+    .stat-info h3 {
+      font-size: 28px;
+      font-weight: 700;
+      color: #1565c0;
+      line-height: 1;
+    }
+    .stat-info p {
+      font-size: 13px;
+      color: #888;
+      margin-top: 4px;
+    }
+    .quick-links {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+    .quick-link {
+      background: #fff;
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+      text-align: center;
+      cursor: pointer;
+      transition: transform .15s, box-shadow .15s;
+      display: block;
+    }
+    .quick-link:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    }
+    .quick-link .icon { font-size: 28px; margin-bottom: 8px; }
+    .quick-link h4 { font-size: 15px; color: #333; margin-bottom: 4px; }
+    .quick-link p  { font-size: 12px; color: #999; }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar">
+    <span class="navbar-brand">🏗️ Vistoria Online</span>
+    <div class="navbar-nav">
+      <a href="/admin/index.html" class="active">Dashboard</a>
+      <a href="/admin/empresas.html">Empresas</a>
+      <a href="/admin/usuarios.html">Usuários</a>
+      <a href="#" onclick="logout()">Sair</a>
+    </div>
+    <span class="navbar-user" id="navbar-user"></span>
+  </nav>
+
+  <div class="container main-content">
+
+    <div class="section-header">
+      <h2>Dashboard</h2>
+    </div>
+
+    <!-- Cards de resumo -->
+    <div class="stats-grid" id="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon">🏢</div>
+        <div class="stat-info">
+          <h3 id="count-empresas">—</h3>
+          <p>Empresas ativas</p>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">🏗️</div>
+        <div class="stat-info">
+          <h3 id="count-vistorias">—</h3>
+          <p>Vistorias em andamento</p>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">👤</div>
+        <div class="stat-info">
+          <h3 id="count-usuarios">—</h3>
+          <p>Usuários cadastrados</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Links rápidos -->
+    <div class="section-header">
+      <h2>Acesso rápido</h2>
+    </div>
+
+    <div class="quick-links">
+      <a class="quick-link" href="/admin/empresas.html">
+        <div class="icon">🏢</div>
+        <h4>Empresas</h4>
+        <p>Gerenciar empresas e unidades</p>
+      </a>
+      <a class="quick-link" href="/admin/usuarios.html">
+        <div class="icon">👥</div>
+        <h4>Usuários</h4>
+        <p>Perfis, roles e vínculos</p>
+      </a>
+      <a class="quick-link" href="/analista/vistorias.html">
+        <div class="icon">📋</div>
+        <h4>Vistorias</h4>
+        <p>Acompanhar todas as vistorias</p>
+      </a>
+    </div>
+
+  </div>
+
+  <script type="module">
+    import { requireLogin, requireRole, getUser, auth } from '/js/api.js';
+    import { empresas, vistorias, perfis } from '/js/api.js';
+
+    requireLogin();
+    requireRole('admin');
+
+    const user = getUser();
+    document.getElementById('navbar-user').textContent = user?.nome || user?.email || '';
+
+    // Carrega contadores
+    async function carregarStats() {
+      try {
+        const [resEmpresas, resVistorias, resPerfis] = await Promise.all([
+          empresas.listar(true),
+          vistorias.listar({ status: 'em_andamento' }),
+          perfis.listar(true)
+        ]);
+        document.getElementById('count-empresas').textContent  = resEmpresas.data?.length  ?? '—';
+        document.getElementById('count-vistorias').textContent = resVistorias.data?.length ?? '—';
+        document.getElementById('count-usuarios').textContent  = resPerfis.data?.length    ?? '—';
+      } catch (err) {
+        console.error('Erro ao carregar stats:', err.message);
+      }
+    }
+
+    carregarStats();
+
+    window.logout = async () => {
+      await auth.logout();
+      window.location.href = '/index.html';
+    };
+  </script>
+
+</body>
+</html>
