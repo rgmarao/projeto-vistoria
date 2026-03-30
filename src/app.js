@@ -11,6 +11,7 @@ import ocorrenciasRoutes from "./routes/ocorrencias.js";
 import areasRoutes from './routes/areas.js';
 import empresasRoutes from './routes/empresas.js';
 import usuariosRoutes from './routes/usuarios.js';
+import perfisRoutes from './routes/perfis.js';
 
 const app = express();
 
@@ -41,6 +42,7 @@ app.use("/api/usuarios", usuariosRoutes);   // ✅ específica primeiro
 app.use('/api', ocorrenciasRoutes);         // genérica
 app.use('/api', areasRoutes);               // genérica
 app.use('/api', fotosRoutes);               // genérica por último
+app.use("/api/perfis", perfisRoutes);
 
 // Rota não encontrada
 app.use((req, res) => {
