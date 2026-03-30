@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Analista — Vistorias</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <style>
+    .filtros { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+    .filtros select { width: auto; min-width: 160px; }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar">
+    <span class="navbar-brand">🏗️ Vistoria Online</span>
+    <div class="navbar-nav">
+      <a href="/analista/index.html">Dashboard</a>
+      <a href="/analista/vistorias.html" class="active">Vistorias</a>
+      <a href="#" onclick="logout()">Sair</a>
+    </div>
+    <span class="navbar-user" id="navbar-user"></span>
+  </nav>
+
+  <div class="container main-content">
+
+    <div class="section-header">
+      <h2>Vistorias</h2>
+      <button class="btn btn-primary btn-sm" onclick="window.location.href='/analista/index.html'">+ Nova</button>
+    </div>
+
+    <!-- Filtros -->
+    <div class="filtros">
+      <select id="filtro-status" onchange="carregar()">
+        <option value="">Todos os status</option>
+        <option value="em_andamento">Em andamento</option>
+        <option value="finalizada">Finalizada</option>
+        <option value="publicada">Publicada</option>
+      </select>
+    </div>
+
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Unidade</th>
+              <th>Empresa</th>
+              <th>Status</th>
+              <th>Data</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="tabela-vistorias">
+            <tr><td colspan="5" style="text-align:center;color:#999">Carregando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <script type="module">
+    import { requireLogin, getUser, auth, vistorias } from '/js/api.js';
+
+    requireLogin();
+    document.getElementById('navbar-user').textContent = getUser()?.nome || '';
+
+    const statusBadge = {
+      em_andamento: '<span class="badge badge-orange">Em andamento</span>',
+      finalizada:   '<span class="badge badge-blue">Finalizada</span>',
+      publicada:    '<span class="badge badge-green">Publicada</span>'
+    };
+
+    window.carregar = async () => {
+      const tbody  = document.getElementById('tabela-vistorias');
+      const status = document.getElementById('filtro-status').value;
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#999">Carregando...</td></tr>';
+      try {
+        const params = status ? { status } : {};
+        const res = await vistorias.listar(params);
+        if (!res.data?.length) {
+          tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#999">Nenhuma vistoria encontrada.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = res.data.map(v => `
+          <tr>
+            <td>${v.unidades?.nome || '—'}</td>
+            <td>${v.empresas?.nome || '—'}</td>
+            <td>${statusBadge[v.status] || v.status}</td>
+            <td>${new Date(v.data_criacao).toLocaleDateString('pt-BR')}</td>
+            <td class="actions">
+              <a href="/analista/vistoria.html?id=${v.id}" class="btn btn-primary btn-sm">Abrir</a>
+              ${v.status === 'em_andamento' ? `<button class="btn btn-warning btn-sm" onclick="finalizar('${v.id}')">Finalizar</button>` : ''}
+              ${v.status === 'finalizada'   ? `<button class="btn btn-success btn-sm" onclick="publicar('${v.id}')">Publicar</button>`  : ''}
+            </td>
+          </tr>`).join('');
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="5" style="color:#c62828">${err.message}</td></tr>`;
+      }
+    };
+
+    window.finalizar = async (id) => {
+      if (!confirm('Finalizar esta vistoria? Ela não poderá mais ser editada.')) return;
+      try {
+        await vistorias.finalizar(id);
+        carregar();
+      } catch (err) { alert(err.message); }
+    };
+
+    window.publicar = async (id) => {
+      if (!confirm('Publicar esta vistoria? Ela ficará visível para os usuários da unidade.')) return;
+      try {
+        await vistorias.publicar(id);
+        carregar();
+      } catch (err) { alert(err.message); }
+    };
+
+    window.logout = async () => { await auth.logout(); window.location.href = '/index.html'; };
+
+    carregar();
+  </script>
+
+</body>
+</html>
