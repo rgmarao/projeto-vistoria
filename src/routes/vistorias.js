@@ -82,7 +82,7 @@ router.get('/', requireAuth, async (req, res) => {
       .from('vistorias')
       .select(`
         *,
-        unidades (id, nome, endereco),
+        unidades (id, nome, endereco, empresas(id, nome)),
         perfis (id, nome)
       `)
       .order('data_criacao', { ascending: false });
@@ -114,10 +114,7 @@ router.get('/', requireAuth, async (req, res) => {
       return res.status(400).json({ error: error.message });
     }
 
-    return res.json({
-      total: data.length,
-      vistorias: data
-    });
+    return res.json({ ok: true, data });
 
   } catch (err) {
     console.error('Erro ao listar vistorias:', err);
@@ -148,7 +145,7 @@ router.get('/:id', requireAuth, async (req, res) => {
       .from('vistorias')
       .select(`
         *,
-        unidades (id, nome, endereco, logo_url),
+        unidades (id, nome, endereco, logo_url, empresas(id, nome)),
         perfis (id, nome),
         ocorrencias (
           id,

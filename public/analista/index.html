@@ -151,7 +151,7 @@
           <div class="vistoria-card">
             <div class="vistoria-info">
               <h4>${v.unidades?.nome || 'Unidade'}</h4>
-              <p>${v.empresas?.nome || ''} · ${new Date(v.data_criacao).toLocaleDateString('pt-BR')}</p>
+              <p>${v.unidades?.empresas?.nome || ''} · ${new Date(v.data_criacao).toLocaleDateString('pt-BR')}</p>
             </div>
             <div class="vistoria-acoes">
               <a href="/analista/vistoria.html?id=${v.id}" class="btn btn-primary btn-sm">Abrir</a>
