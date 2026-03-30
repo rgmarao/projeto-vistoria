@@ -10,8 +10,7 @@ import vistoriasRoutes from "./routes/vistorias.js";
 import ocorrenciasRoutes from "./routes/ocorrencias.js";
 import areasRoutes from './routes/areas.js';
 import empresasRoutes from './routes/empresas.js';
-import unidadesRoutes from './routes/unidades.js';
-
+import usuariosRoutes from './routes/usuarios.js';
 
 const app = express();
 
@@ -37,8 +36,8 @@ app.get("/", (req, res) => {
 // Rotas da API
 app.use("/api/auth", authRoutes);
 app.use("/api/empresas", empresasRoutes);   // ✅ específica primeiro
-app.use("/api/unidades", unidadesRoutes);   // ✅ específica (multer: antes das genéricas)
 app.use("/api/vistorias", vistoriasRoutes); // ✅ específica primeiro
+app.use("/api/usuarios", usuariosRoutes);   // ✅ específica primeiro
 app.use('/api', ocorrenciasRoutes);         // genérica
 app.use('/api', areasRoutes);               // genérica
 app.use('/api', fotosRoutes);               // genérica por último
@@ -52,12 +51,6 @@ app.use((req, res) => {
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ error: "Erro interno do servidor" });
-});
-
-const PORT = process.env.PORT || 5000;
-
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server is running on port ${PORT}`);
 });
 
 export default app;
