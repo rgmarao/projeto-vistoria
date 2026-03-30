@@ -86,7 +86,7 @@
         tbody.innerHTML = res.data.map(v => `
           <tr>
             <td>${v.unidades?.nome || '—'}</td>
-            <td>${v.empresas?.nome || '—'}</td>
+            <td>${v.unidades?.empresas?.nome || '—'}</td>
             <td>${statusBadge[v.status] || v.status}</td>
             <td>${new Date(v.data_criacao).toLocaleDateString('pt-BR')}</td>
             <td class="actions">
