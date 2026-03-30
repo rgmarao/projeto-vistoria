@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin — Empresas</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+
+  <nav class="navbar">
+    <span class="navbar-brand">🏗️ Vistoria Online</span>
+    <div class="navbar-nav">
+      <a href="/admin/index.html">Dashboard</a>
+      <a href="/admin/empresas.html" class="active">Empresas</a>
+      <a href="/admin/usuarios.html">Usuários</a>
+      <a href="#" onclick="logout()">Sair</a>
+    </div>
+    <span class="navbar-user" id="navbar-user"></span>
+  </nav>
+
+  <div class="container main-content">
+
+    <div class="section-header">
+      <h2>Empresas</h2>
+      <button class="btn btn-primary btn-sm" onclick="abrirModalCriar()">+ Nova Empresa</button>
+    </div>
+
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>CNPJ</th>
+              <th>Status</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="tabela-empresas">
+            <tr><td colspan="4" style="text-align:center;color:#999">Carregando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Modal Criar / Editar -->
+  <div class="modal-overlay" id="modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modal-titulo">Nova Empresa</h3>
+        <button class="modal-close" onclick="fecharModal()">✕</button>
+      </div>
+      <div class="alert alert-error" id="modal-erro"></div>
+      <div class="form-group">
+        <label>Nome *</label>
+        <input type="text" id="campo-nome" placeholder="Nome da empresa" />
+      </div>
+      <div class="form-group">
+        <label>CNPJ</label>
+        <input type="text" id="campo-cnpj" placeholder="00.000.000/0000-00" />
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-neutral btn-sm" onclick="fecharModal()">Cancelar</button>
+        <button class="btn btn-primary btn-sm" id="btn-salvar" onclick="salvar()">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { requireLogin, requireRole, getUser, auth } from '/js/api.js';
+    import { empresas } from '/js/api.js';
+
+    requireLogin();
+    requireRole('admin');
+
+    document.getElementById('navbar-user').textContent = getUser()?.nome || '';
+
+    let editandoId = null;
+
+    async function carregar() {
+      const tbody = document.getElementById('tabela-empresas');
+      try {
+        const res = await empresas.listar();
+        if (!res.data?.length) {
+          tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#999">Nenhuma empresa cadastrada.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = res.data.map(e => `
+          <tr>
+            <td>${e.nome}</td>
+            <td>${e.cnpj || '—'}</td>
+            <td><span class="badge ${e.ativo ? 'badge-green' : 'badge-red'}">${e.ativo ? 'Ativa' : 'Inativa'}</span></td>
+            <td class="actions">
+              <button class="btn btn-neutral btn-sm" onclick="editar('${e.id}','${e.nome}','${e.cnpj||''}')">Editar</button>
+              <button class="btn ${e.ativo ? 'btn-danger' : 'btn-success'} btn-sm" onclick="toggleAtivo('${e.id}',${e.ativo})">
+                ${e.ativo ? 'Desativar' : 'Ativar'}
+              </button>
+            </td>
+          </tr>`).join('');
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="4" style="color:#c62828">${err.message}</td></tr>`;
+      }
+    }
+
+    window.abrirModalCriar = () => {
+      editandoId = null;
+      document.getElementById('modal-titulo').textContent = 'Nova Empresa';
+      document.getElementById('campo-nome').value = '';
+      document.getElementById('campo-cnpj').value = '';
+      document.getElementById('modal-erro').classList.remove('show');
+      document.getElementById('modal').classList.add('show');
+    };
+
+    window.editar = (id, nome, cnpj) => {
+      editandoId = id;
+      document.getElementById('modal-titulo').textContent = 'Editar Empresa';
+      document.getElementById('campo-nome').value = nome;
+      document.getElementById('campo-cnpj').value = cnpj;
+      document.getElementById('modal-erro').classList.remove('show');
+      document.getElementById('modal').classList.add('show');
+    };
+
+    window.fecharModal = () => document.getElementById('modal').classList.remove('show');
+
+    window.salvar = async () => {
+      const nome = document.getElementById('campo-nome').value.trim();
+      const cnpj = document.getElementById('campo-cnpj').value.trim();
+      const erro = document.getElementById('modal-erro');
+      const btn  = document.getElementById('btn-salvar');
+
+      if (!nome) { erro.textContent = 'Nome é obrigatório.'; erro.classList.add('show'); return; }
+
+      btn.disabled = true;
+      erro.classList.remove('show');
+
+      try {
+        if (editandoId) {
+          await empresas.editar(editandoId, { nome, cnpj: cnpj || null });
+        } else {
+          await empresas.criar({ nome, cnpj: cnpj || null });
+        }
+        fecharModal();
+        carregar();
+      } catch (err) {
+        erro.textContent = err.message;
+        erro.classList.add('show');
+      } finally {
+        btn.disabled = false;
+      }
+    };
+
+    window.toggleAtivo = async (id, ativo) => {
+      try {
+        if (ativo) await empresas.desativar(id);
+        else       await empresas.ativar(id);
+        carregar();
+      } catch (err) {
+        alert(err.message);
+      }
+    };
+
+    window.logout = async () => { await auth.logout(); window.location.href = '/index.html'; };
+
+    carregar();
+  </script>
+
+</body>
+</html>
