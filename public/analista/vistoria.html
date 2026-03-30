@@ -216,7 +216,7 @@
         const unidade = vistoriaAtual.unidades?.nome || '—';
         const empresa = vistoriaAtual.unidades?.empresas?.nome || '';
         const dataStr = vistoriaAtual.data_criacao || vistoriaAtual.created_at;
-        const data    = dataStr ? new Date(dataStr).toLocaleDateString('pt-BR');
+        const data    = dataStr ? new Date(dataStr).toLocaleDateString('pt-BR') : '—';
 
         document.getElementById('header-titulo').textContent = unidade;
         document.getElementById('header-sub').innerHTML =
