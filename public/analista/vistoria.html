@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vistoria — Detalhe</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <style>
+    .vistoria-header {
+      background: #fff;
+      border-radius: 10px;
+      padding: 20px 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .vistoria-header-info h2 { font-size: 18px; color: #1565c0; }
+    .vistoria-header-info p  { font-size: 13px; color: #888; margin-top: 4px; }
+    .vistoria-header-acoes   { display: flex; gap: 8px; }
+
+    .ocorrencia-card {
+      background: #fff;
+      border-radius: 10px;
+      padding: 18px 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+      margin-bottom: 14px;
+      border-left: 4px solid #ddd;
+    }
+    .ocorrencia-card.ok       { border-left-color: #388e3c; }
+    .ocorrencia-card.atencao  { border-left-color: #f57c00; }
+    .ocorrencia-card.critico  { border-left-color: #d32f2f; }
+
+    .ocorrencia-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .ocorrencia-num  { font-size: 12px; color: #aaa; margin-bottom: 4px; }
+    .ocorrencia-desc { font-size: 15px; font-weight: 600; color: #333; }
+    .ocorrencia-rec  { font-size: 13px; color: #666; margin-top: 6px; }
+    .ocorrencia-meta { font-size: 12px; color: #aaa; margin-top: 6px; }
+    .ocorrencia-acoes { display: flex; gap: 6px; flex-shrink: 0; }
+
+    .fotos-row {
+      display: flex;
+      gap: 12px;
+      margin-top: 14px;
+      flex-wrap: wrap;
+    }
+    .foto-slot {
+      flex: 1;
+      min-width: 140px;
+      max-width: 200px;
+      border: 2px dashed #ddd;
+      border-radius: 8px;
+      overflow: hidden;
+      position: relative;
+      cursor: pointer;
+      background: #fafafa;
+    }
+    .foto-slot img {
+      width: 100%;
+      height: 130px;
+      object-fit: cover;
+      display: block;
+    }
+    .foto-slot .foto-placeholder {
+      height: 130px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #bbb;
+      font-size: 12px;
+      gap: 6px;
+    }
+    .foto-slot .foto-placeholder span { font-size: 24px; }
+    .foto-del {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      background: rgba(0,0,0,0.55);
+      color: #fff;
+      border: none;
+      border-radius: 50%;
+      width: 22px;
+      height: 22px;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    input[type="file"] { display: none; }
+
+    .empty-state {
+      text-align: center;
+      padding: 48px 20px;
+      color: #aaa;
+    }
+    .empty-state span { font-size: 48px; display: block; margin-bottom: 12px; }
+    .empty-state p    { font-size: 15px; }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar">
+    <span class="navbar-brand">🏗️ Vistoria Online</span>
+    <div class="navbar-nav">
+      <a href="/analista/index.html">Dashboard</a>
+      <a href="/analista/vistorias.html">Vistorias</a>
+      <a href="#" onclick="logout()">Sair</a>
+    </div>
+    <span class="navbar-user" id="navbar-user"></span>
+  </nav>
+
+  <div class="container main-content">
+
+    <!-- Header da vistoria -->
+    <div class="vistoria-header" id="vistoria-header">
+      <div class="vistoria-header-info">
+        <h2 id="header-titulo">Carregando...</h2>
+        <p id="header-sub"></p>
+      </div>
+      <div class="vistoria-header-acoes" id="header-acoes"></div>
+    </div>
+
+    <!-- Botão nova ocorrência -->
+    <div class="section-header">
+      <h2>Ocorrências <span id="count-ocorrencias" style="font-size:14px;color:#aaa;font-weight:400"></span></h2>
+      <button class="btn btn-primary btn-sm" id="btn-nova-ocorrencia" onclick="abrirModalOcorrencia()">+ Nova Ocorrência</button>
+    </div>
+
+    <!-- Lista de ocorrências -->
+    <div id="lista-ocorrencias"></div>
+
+  </div>
+
+  <!-- Input file oculto para upload -->
+  <input type="file" id="file-input" accept="image/*" capture="environment" onchange="uploadFoto()" />
+
+  <!-- Modal Ocorrência (criar/editar) -->
+  <div class="modal-overlay" id="modal-ocorrencia">
+    <div class="modal" style="max-width:520px">
+      <div class="modal-header">
+        <h3 id="modal-ocorrencia-titulo">Nova Ocorrência</h3>
+        <button class="modal-close" onclick="fecharModalOcorrencia()">✕</button>
+      </div>
+      <div class="alert alert-error" id="ocorrencia-erro"></div>
+      <div class="form-group">
+        <label>Descrição *</label>
+        <textarea id="oc-descricao" rows="3" placeholder="Descreva a ocorrência..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>Status *</label>
+        <select id="oc-status">
+          <option value="ok">✅ OK</option>
+          <option value="atencao">⚠️ Atenção</option>
+          <option value="critico">🚨 Crítico</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Origem</label>
+        <select id="oc-origem">
+          <option value="vistoria">Vistoria</option>
+          <option value="morador">Morador</option>
+          <option value="web">Web</option>
+          <option value="app">App</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Recomendação</label>
+        <textarea id="oc-recomendacao" rows="2" placeholder="Recomendação (opcional)..."></textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-neutral btn-sm" onclick="fecharModalOcorrencia()">Cancelar</button>
+        <button class="btn btn-primary btn-sm" id="btn-salvar-oc" onclick="salvarOcorrencia()">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { requireLogin, getUser, auth, vistorias, ocorrencias } from '/js/api.js';
+
+    requireLogin();
+    document.getElementById('navbar-user').textContent = getUser()?.nome || '';
+
+    const params    = new URLSearchParams(location.search);
+    const visId     = params.get('id');
+    if (!visId) { alert('ID da vistoria não informado.'); history.back(); }
+
+    let vistoriaAtual = null;
+    let editandoOcId  = null;
+    let uploadOcId    = null;
+    let uploadSlot    = null;
+
+    const statusBadge = {
+      em_andamento: '<span class="badge badge-orange">Em andamento</span>',
+      finalizada:   '<span class="badge badge-blue">Finalizada</span>',
+      publicada:    '<span class="badge badge-green">Publicada</span>'
+    };
+    const statusCorBorda = { ok: 'ok', atencao: 'atencao', critico: 'critico' };
+
+    // ── Carregar vistoria ─────────────────────────
+    async function carregar() {
+      try {
+        const res = await vistorias.detalhe(visId);
+        vistoriaAtual = res.data || res;
+
+        const unidade = vistoriaAtual.unidades?.nome || '—';
+        const empresa = vistoriaAtual.empresas?.nome || '';
+        const data    = new Date(vistoriaAtual.data_criacao).toLocaleDateString('pt-BR');
+
+        document.getElementById('header-titulo').textContent = unidade;
+        document.getElementById('header-sub').innerHTML =
+          `${empresa} · ${data} · ${statusBadge[vistoriaAtual.status] || vistoriaAtual.status}`;
+
+        // Botões de ação conforme status
+        const acoes = document.getElementById('header-acoes');
+        acoes.innerHTML = '';
+        if (vistoriaAtual.status === 'em_andamento') {
+          acoes.innerHTML = `<button class="btn btn-warning btn-sm" onclick="finalizar()">Finalizar</button>`;
+        } else if (vistoriaAtual.status === 'finalizada') {
+          acoes.innerHTML = `<button class="btn btn-success btn-sm" onclick="publicar()">Publicar</button>`;
+        }
+
+        // Esconde botão nova ocorrência se não estiver em andamento
+        const btnNova = document.getElementById('btn-nova-ocorrencia');
+        btnNova.style.display = vistoriaAtual.status === 'em_andamento' ? '' : 'none';
+
+        renderOcorrencias(vistoriaAtual.ocorrencias || []);
+      } catch (err) {
+        document.getElementById('header-titulo').textContent = 'Erro ao carregar vistoria';
+        console.error(err.message);
+      }
+    }
+
+    // ── Renderizar ocorrências ────────────────────
+    function renderOcorrencias(lista) {
+      const div = document.getElementById('lista-ocorrencias');
+      document.getElementById('count-ocorrencias').textContent = `(${lista.length})`;
+
+      if (!lista.length) {
+        div.innerHTML = `
+          <div class="empty-state">
+            <span>📋</span>
+            <p>Nenhuma ocorrência registrada ainda.</p>
+          </div>`;
+        return;
+      }
+
+      const editavel = vistoriaAtual.status === 'em_andamento';
+
+      div.innerHTML = lista.map(oc => {
+        const foto1 = oc.foto_1_signed || oc.foto_1_url;
+        const foto2 = oc.foto_2_signed || oc.foto_2_url;
+
+        const slotFoto = (url, slot) => url
+          ? `<div class="foto-slot">
+               <img src="${url}" alt="Foto ${slot}" onclick="verFoto('${url}')" />
+               ${editavel ? `<button class="foto-del" onclick="deletarFoto('${oc.id}',${slot})">✕</button>` : ''}
+             </div>`
+          : editavel
+            ? `<div class="foto-slot" onclick="iniciarUpload('${oc.id}',${slot})" title="Clique para adicionar foto">
+                 <div class="foto-placeholder"><span>📷</span>Foto ${slot}</div>
+               </div>`
+            : `<div class="foto-slot">
+                 <div class="foto-placeholder"><span>—</span>Sem foto</div>
+               </div>`;
+
+        return `
+          <div class="ocorrencia-card ${statusCorBorda[oc.status] || ''}">
+            <div class="ocorrencia-top">
+              <div>
+                <div class="ocorrencia-num">#${oc.numero_ocorrencia}</div>
+                <div class="ocorrencia-desc">${oc.descricao}</div>
+                ${oc.recomendacao ? `<div class="ocorrencia-rec">💡 ${oc.recomendacao}</div>` : ''}
+                <div class="ocorrencia-meta">
+                  ${statusBadge[oc.status] || oc.status} &nbsp;·&nbsp; Origem: ${oc.origem}
+                </div>
+              </div>
+              ${editavel ? `
+              <div class="ocorrencia-acoes">
+                <button class="btn btn-neutral btn-sm" onclick="abrirEdicao('${oc.id}','${oc.descricao.replace(/'/g,"\\'")}','${oc.status}','${oc.origem}','${(oc.recomendacao||'').replace(/'/g,"\\'")}')">Editar</button>
+                <button class="btn btn-danger btn-sm"  onclick="deletarOcorrencia('${oc.id}')">Excluir</button>
+              </div>` : ''}
+            </div>
+            <div class="fotos-row">
+              ${slotFoto(foto1, 1)}
+              ${slotFoto(foto2, 2)}
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    // ── Modal ocorrência ──────────────────────────
+    window.abrirModalOcorrencia = () => {
+      editandoOcId = null;
+      document.getElementById('modal-ocorrencia-titulo').textContent = 'Nova Ocorrência';
+      document.getElementById('oc-descricao').value    = '';
+      document.getElementById('oc-status').value       = 'ok';
+      document.getElementById('oc-origem').value       = 'vistoria';
+      document.getElementById('oc-recomendacao').value = '';
+      document.getElementById('ocorrencia-erro').classList.remove('show');
+      document.getElementById('modal-ocorrencia').classList.add('show');
+    };
+
+    window.abrirEdicao = (id, descricao, status, origem, recomendacao) => {
+      editandoOcId = id;
+      document.getElementById('modal-ocorrencia-titulo').textContent = 'Editar Ocorrência';
+      document.getElementById('oc-descricao').value    = descricao;
+      document.getElementById('oc-status').value       = status;
+      document.getElementById('oc-origem').value       = origem;
+      document.getElementById('oc-recomendacao').value = recomendacao;
+      document.getElementById('ocorrencia-erro').classList.remove('show');
+      document.getElementById('modal-ocorrencia').classList.add('show');
+    };
+
+    window.fecharModalOcorrencia = () => document.getElementById('modal-ocorrencia').classList.remove('show');
+
+    window.salvarOcorrencia = async () => {
+      const descricao    = document.getElementById('oc-descricao').value.trim();
+      const status       = document.getElementById('oc-status').value;
+      const origem       = document.getElementById('oc-origem').value;
+      const recomendacao = document.getElementById('oc-recomendacao').value.trim();
+      const erro = document.getElementById('ocorrencia-erro');
+      const btn  = document.getElementById('btn-salvar-oc');
+
+      if (!descricao) { erro.textContent = 'Descrição é obrigatória.'; erro.classList.add('show'); return; }
+
+      erro.classList.remove('show');
+      btn.disabled = true;
+      try {
+        const body = { descricao, status, origem, recomendacao: recomendacao || null };
+        if (editandoOcId) {
+          await ocorrencias.editar(editandoOcId, body);
+        } else {
+          await ocorrencias.criar(visId, body);
+        }
+        fecharModalOcorrencia();
+        carregar();
+      } catch (err) {
+        erro.textContent = err.message;
+        erro.classList.add('show');
+      } finally {
+        btn.disabled = false;
+      }
+    };
+
+    window.deletarOcorrencia = async (id) => {
+      if (!confirm('Excluir esta ocorrência?')) return;
+      try { await ocorrencias.deletar(id); carregar(); }
+      catch (err) { alert(err.message); }
+    };
+
+    // ── Upload de fotos ───────────────────────────
+    window.iniciarUpload = (ocId, slot) => {
+      uploadOcId = ocId;
+      uploadSlot = slot;
+      document.getElementById('file-input').click();
+    };
+
+    window.uploadFoto = async () => {
+      const file = document.getElementById('file-input').files[0];
+      if (!file) return;
+      try {
+        const form = new FormData();
+        form.append('foto', file);
+        form.append('slot', uploadSlot);
+        const res = await fetch(`/api/ocorrencias/${uploadOcId}/fotos`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+          body: form
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Erro no upload');
+        document.getElementById('file-input').value = '';
+        carregar();
+      } catch (err) { alert(err.message); }
+    };
+
+    window.deletarFoto = async (ocId, slot) => {
+      if (!confirm(`Remover foto ${slot}?`)) return;
+      try {
+        const res = await fetch(`/api/ocorrencias/${ocId}/fotos/${slot}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        carregar();
+      } catch (err) { alert(err.message); }
+    };
+
+    window.verFoto = (url) => window.open(url, '_blank');
+
+    // ── Finalizar / Publicar ──────────────────────
+    window.finalizar = async () => {
+      if (!confirm('Finalizar esta vistoria? Não será possível editar as ocorrências após isso.')) return;
+      try { await vistorias.finalizar(visId); carregar(); }
+      catch (err) { alert(err.message); }
+    };
+
+    window.publicar = async () => {
+      if (!confirm('Publicar esta vistoria? Ela ficará visível para os usuários da unidade.')) return;
+      try { await vistorias.publicar(visId); carregar(); }
+      catch (err) { alert(err.message); }
+    };
+
+    window.logout = async () => { await auth.logout(); window.location.href = '/index.html'; };
+
+    carregar();
+  </script>
+
+</body>
+</html>
