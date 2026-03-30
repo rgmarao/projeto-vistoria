@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vistoria Online — Login</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <div class="page-center">
+    <div class="login-box">
+      <div class="login-logo">
+        <h1>🏗️ Vistoria Online</h1>
+        <p>Acesse sua conta para continuar</p>
+      </div>
+      <div class="alert alert-error" id="alert-erro"></div>
+      <form id="form-login">
+        <div class="form-group">
+          <label for="email">E-mail</label>
+          <input type="email" id="email" placeholder="seu@email.com" required autofocus />
+        </div>
+        <div class="form-group">
+          <label for="senha">Senha</label>
+          <input type="password" id="senha" placeholder="••••••••" required />
+        </div>
+        <button type="submit" class="btn btn-primary btn-full" id="btn-entrar">Entrar</button>
+      </form>
+    </div>
+  </div>
+  <script type="module">
+    import { auth, saveSession, isLoggedIn, getUser } from '/js/api.js';
+
+    if (isLoggedIn()) redirecionar(getUser());
+
+    document.getElementById('form-login').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn   = document.getElementById('btn-entrar');
+      const alrt  = document.getElementById('alert-erro');
+      const email = document.getElementById('email').value.trim();
+      const senha = document.getElementById('senha').value;
+
+      alrt.classList.remove('show');
+      btn.disabled = true;
+      btn.textContent = 'Entrando...';
+
+      try {
+        const data = await auth.login(email, senha);
+
+        const res = await fetch(`/api/perfis/${data.user.id}`, {
+          headers: { 'Authorization': `Bearer ${data.token}` }
+        });
+        const perfilData = await res.json();
+
+        const user = {
+          id:     data.user.id,
+          email:  data.user.email,
+          nome:   perfilData.data?.nome || data.user.email,
+          perfil: perfilData.data?.perfil || 'usuario'
+        };
+
+        saveSession(data.token, user);
+        redirecionar(user);
+      } catch (err) {
+        alrt.textContent = err.message;
+        alrt.classList.add('show');
+        btn.disabled = false;
+        btn.textContent = 'Entrar';
+      }
+    });
+
+    function redirecionar(user) {
+      if (user.perfil === 'admin') window.location.href = '/admin/index.html';
+      else window.location.href = '/analista/index.html';
+    }
+  </script>
+</body>
+</html>
