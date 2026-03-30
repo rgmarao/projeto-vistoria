@@ -1,1 +1,7 @@
-run = "bash pull-from-github.sh && npm run dev"
+run = "bash pull-from-github.sh && node index.js"
+
+[nix]
+channel = "stable-23_05"
+
+[deployment]
+run = ["sh", "-c", "bash pull-from-github.sh && node index.js"]
