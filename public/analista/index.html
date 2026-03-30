@@ -194,7 +194,8 @@
       try {
         const res = await vistorias.criar({ unidade_id, criado_por: user.id });
         fecharModal();
-        window.location.href = `/analista/vistoria.html?id=${res.data?.id || res.id}`;
+        const id = res.vistoria?.id || res.data?.id || res.id;
+        window.location.href = `/analista/vistoria.html?id=${id}`;
       } catch (err) {
         erro.textContent = err.message;
         erro.classList.add('show');
