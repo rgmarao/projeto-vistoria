@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin — Usuários</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <style>
+    .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 600;
+      background: #e3f2fd;
+      color: #1565c0;
+      margin: 2px;
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar">
+    <span class="navbar-brand">🏗️ Vistoria Online</span>
+    <div class="navbar-nav">
+      <a href="/admin/index.html">Dashboard</a>
+      <a href="/admin/empresas.html">Empresas</a>
+      <a href="/admin/usuarios.html" class="active">Usuários</a>
+      <a href="#" onclick="logout()">Sair</a>
+    </div>
+    <span class="navbar-user" id="navbar-user"></span>
+  </nav>
+
+  <div class="container main-content">
+
+    <div class="section-header">
+      <h2>Usuários</h2>
+      <button class="btn btn-primary btn-sm" onclick="abrirModalCriar()">+ Novo Usuário</button>
+    </div>
+
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Perfil</th>
+              <th>Unidades</th>
+              <th>Status</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="tabela-usuarios">
+            <tr><td colspan="5" style="text-align:center;color:#999">Carregando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Modal Criar Usuário -->
+  <div class="modal-overlay" id="modal-criar">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Novo Usuário</h3>
+        <button class="modal-close" onclick="fecharModalCriar()">✕</button>
+      </div>
+      <div class="alert alert-error" id="criar-erro"></div>
+      <div class="alert alert-success" id="criar-ok"></div>
+      <div class="form-group">
+        <label>Nome *</label>
+        <input type="text" id="criar-nome" placeholder="Nome completo" />
+      </div>
+      <div class="form-group">
+        <label>E-mail *</label>
+        <input type="email" id="criar-email" placeholder="email@exemplo.com" />
+      </div>
+      <div class="form-group">
+        <label>Senha *</label>
+        <input type="password" id="criar-senha" placeholder="Mínimo 6 caracteres" />
+      </div>
+      <div class="form-group">
+        <label>Perfil</label>
+        <select id="criar-perfil">
+          <option value="usuario">Usuário</option>
+          <option value="analista">Analista</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-neutral btn-sm" onclick="fecharModalCriar()">Cancelar</button>
+        <button class="btn btn-primary btn-sm" id="btn-criar" onclick="criarUsuario()">Criar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Editar Perfil -->
+  <div class="modal-overlay" id="modal-editar">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Editar Usuário</h3>
+        <button class="modal-close" onclick="fecharModalEditar()">✕</button>
+      </div>
+      <div class="alert alert-error" id="editar-erro"></div>
+      <div class="form-group">
+        <label>Nome</label>
+        <input type="text" id="editar-nome" placeholder="Nome completo" />
+      </div>
+      <div class="form-group">
+        <label>Perfil</label>
+        <select id="editar-perfil">
+          <option value="usuario">Usuário</option>
+          <option value="analista">Analista</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-neutral btn-sm" onclick="fecharModalEditar()">Cancelar</button>
+        <button class="btn btn-primary btn-sm" id="btn-editar" onclick="salvarEdicao()">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Vínculos -->
+  <div class="modal-overlay" id="modal-vinculos">
+    <div class="modal" style="max-width:560px">
+      <div class="modal-header">
+        <h3>Unidades de <span id="vinculos-nome"></span></h3>
+        <button class="modal-close" onclick="fecharModalVinculos()">✕</button>
+      </div>
+      <div class="alert alert-error" id="vinculos-erro"></div>
+      <div id="vinculos-lista" style="margin-bottom:16px;min-height:40px"></div>
+      <div class="form-group" style="display:flex;gap:8px;margin-bottom:0">
+        <select id="vinculos-select" style="flex:1"></select>
+        <button class="btn btn-primary btn-sm" onclick="vincular()">Vincular</button>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-neutral btn-sm" onclick="fecharModalVinculos()">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { requireLogin, requireRole, getUser, auth, perfis, empresas } from '/js/api.js';
+
+    requireLogin();
+    requireRole('admin');
+    document.getElementById('navbar-user').textContent = getUser()?.nome || '';
+
+    let editandoId    = null;
+    let vinculosId    = null;
+    let todasUnidades = [];
+
+    // ── Carregar tabela ───────────────────────────
+    async function carregar() {
+      const tbody = document.getElementById('tabela-usuarios');
+      try {
+        const res = await perfis.listar();
+        if (!res.data?.length) {
+          tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#999">Nenhum usuário cadastrado.</td></tr>';
+          return;
+        }
+        // Busca vínculos de cada usuário em paralelo
+        const rows = await Promise.all(res.data.map(async u => {
+          let unidades = [];
+          try {
+            const v = await perfis.unidades(u.id);
+            unidades = v.data || [];
+          } catch (_) {}
+          const tags = unidades.map(v => `<span class="tag">${v.unidades?.nome || v.unidade_id}</span>`).join('') || '—';
+          const badgePerfil = { admin: 'badge-orange', analista: 'badge-blue', usuario: 'badge-gray' }[u.perfil] || 'badge-gray';
+          return `<tr>
+            <td>${u.nome}</td>
+            <td><span class="badge ${badgePerfil}">${u.perfil}</span></td>
+            <td>${tags}</td>
+            <td><span class="badge ${u.ativo ? 'badge-green' : 'badge-red'}">${u.ativo ? 'Ativo' : 'Inativo'}</span></td>
+            <td class="actions">
+              <button class="btn btn-neutral btn-sm" onclick="abrirEditar('${u.id}','${u.nome}','${u.perfil}')">Editar</button>
+              <button class="btn btn-primary btn-sm" onclick="abrirVinculos('${u.id}','${u.nome}')">Unidades</button>
+              <button class="btn ${u.ativo ? 'btn-danger' : 'btn-success'} btn-sm" onclick="toggleAtivo('${u.id}',${u.ativo})">
+                ${u.ativo ? 'Desativar' : 'Ativar'}
+              </button>
+            </td>
+          </tr>`;
+        }));
+        tbody.innerHTML = rows.join('');
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="5" style="color:#c62828">${err.message}</td></tr>`;
+      }
+    }
+
+    // ── Criar usuário ─────────────────────────────
+    window.abrirModalCriar = () => {
+      ['criar-nome','criar-email','criar-senha'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('criar-perfil').value = 'usuario';
+      document.getElementById('criar-erro').classList.remove('show');
+      document.getElementById('criar-ok').classList.remove('show');
+      document.getElementById('modal-criar').classList.add('show');
+    };
+    window.fecharModalCriar = () => document.getElementById('modal-criar').classList.remove('show');
+
+    window.criarUsuario = async () => {
+      const nome   = document.getElementById('criar-nome').value.trim();
+      const email  = document.getElementById('criar-email').value.trim();
+      const senha  = document.getElementById('criar-senha').value;
+      const perfil = document.getElementById('criar-perfil').value;
+      const erro   = document.getElementById('criar-erro');
+      const ok     = document.getElementById('criar-ok');
+      const btn    = document.getElementById('btn-criar');
+
+      erro.classList.remove('show');
+      ok.classList.remove('show');
+      if (!nome || !email || !senha) { erro.textContent = 'Nome, e-mail e senha são obrigatórios.'; erro.classList.add('show'); return; }
+
+      btn.disabled = true;
+      try {
+        // 1. Registra no auth
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+          body: JSON.stringify({ nome, email, senha })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Erro ao registrar');
+
+        // 2. Cria perfil no banco
+        await perfis.criar({ id: data.user.id, nome, perfil });
+
+        ok.textContent = `✅ Usuário ${nome} criado com sucesso!`;
+        ok.classList.add('show');
+        ['criar-nome','criar-email','criar-senha'].forEach(id => document.getElementById(id).value = '');
+        carregar();
+      } catch (err) {
+        erro.textContent = err.message;
+        erro.classList.add('show');
+      } finally {
+        btn.disabled = false;
+      }
+    };
+
+    // ── Editar perfil ─────────────────────────────
+    window.abrirEditar = (id, nome, perfil) => {
+      editandoId = id;
+      document.getElementById('editar-nome').value   = nome;
+      document.getElementById('editar-perfil').value = perfil;
+      document.getElementById('editar-erro').classList.remove('show');
+      document.getElementById('modal-editar').classList.add('show');
+    };
+    window.fecharModalEditar = () => document.getElementById('modal-editar').classList.remove('show');
+
+    window.salvarEdicao = async () => {
+      const nome   = document.getElementById('editar-nome').value.trim();
+      const perfil = document.getElementById('editar-perfil').value;
+      const erro   = document.getElementById('editar-erro');
+      const btn    = document.getElementById('btn-editar');
+
+      erro.classList.remove('show');
+      btn.disabled = true;
+      try {
+        await perfis.editar(editandoId, { nome, perfil });
+        fecharModalEditar();
+        carregar();
+      } catch (err) {
+        erro.textContent = err.message;
+        erro.classList.add('show');
+      } finally {
+        btn.disabled = false;
+      }
+    };
+
+    // ── Ativar / Desativar ────────────────────────
+    window.toggleAtivo = async (id, ativo) => {
+      try {
+        if (ativo) await perfis.desativar(id);
+        else       await perfis.ativar(id);
+        carregar();
+      } catch (err) { alert(err.message); }
+    };
+
+    // ── Vínculos de unidades ──────────────────────
+    window.abrirVinculos = async (id, nome) => {
+      vinculosId = id;
+      document.getElementById('vinculos-nome').textContent = nome;
+      document.getElementById('vinculos-erro').classList.remove('show');
+      document.getElementById('modal-vinculos').classList.add('show');
+      await carregarVinculos();
+      await carregarSelectUnidades();
+    };
+    window.fecharModalVinculos = () => document.getElementById('modal-vinculos').classList.remove('show');
+
+    async function carregarVinculos() {
+      const lista = document.getElementById('vinculos-lista');
+      try {
+        const res = await perfis.unidades(vinculosId);
+        if (!res.data?.length) { lista.innerHTML = '<p style="color:#999;font-size:13px">Nenhuma unidade vinculada.</p>'; return; }
+        lista.innerHTML = res.data.map(v => `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f0f0f0">
+            <span style="font-size:14px">${v.unidades?.nome || v.unidade_id}</span>
+            <button class="btn btn-danger btn-sm" onclick="desvincular('${v.unidade_id}')">Remover</button>
+          </div>`).join('');
+      } catch (err) {
+        lista.innerHTML = `<p style="color:#c62828;font-size:13px">${err.message}</p>`;
+      }
+    }
+
+    async function carregarSelectUnidades() {
+      const sel = document.getElementById('vinculos-select');
+      try {
+        if (!todasUnidades.length) {
+          const res = await empresas.listar(true);
+          // Busca unidades de cada empresa
+          todasUnidades = [];
+          for (const emp of (res.data || [])) {
+            const r = await fetch(`/api/empresas/${emp.id}`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } });
+            const d = await r.json();
+            (d.data?.unidades || []).forEach(u => todasUnidades.push({ id: u.id, nome: `${emp.nome} — ${u.nome}` }));
+          }
+        }
+        sel.innerHTML = todasUnidades.map(u => `<option value="${u.id}">${u.nome}</option>`).join('');
+      } catch (err) {
+        sel.innerHTML = '<option>Erro ao carregar</option>';
+      }
+    }
+
+    window.vincular = async () => {
+      const unidade_id = document.getElementById('vinculos-select').value;
+      const erro = document.getElementById('vinculos-erro');
+      erro.classList.remove('show');
+      try {
+        await perfis.vincular(vinculosId, unidade_id);
+        await carregarVinculos();
+        carregar();
+      } catch (err) {
+        erro.textContent = err.message;
+        erro.classList.add('show');
+      }
+    };
+
+    window.desvincular = async (unidade_id) => {
+      const erro = document.getElementById('vinculos-erro');
+      erro.classList.remove('show');
+      try {
+        await perfis.desvincular(vinculosId, unidade_id);
+        await carregarVinculos();
+        carregar();
+      } catch (err) {
+        erro.textContent = err.message;
+        erro.classList.add('show');
+      }
+    };
+
+    window.logout = async () => { await auth.logout(); window.location.href = '/index.html'; };
+
+    carregar();
+  </script>
+
+</body>
+</html>
