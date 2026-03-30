@@ -211,11 +211,12 @@
     async function carregar() {
       try {
         const res = await vistorias.detalhe(visId);
-        vistoriaAtual = res.data || res;
+        vistoriaAtual = res.vistoria || res.data || res;
 
         const unidade = vistoriaAtual.unidades?.nome || '—';
-        const empresa = vistoriaAtual.empresas?.nome || '';
-        const data    = new Date(vistoriaAtual.data_criacao).toLocaleDateString('pt-BR');
+        const empresa = vistoriaAtual.unidades?.empresas?.nome || '';
+        const dataStr = vistoriaAtual.data_criacao || vistoriaAtual.created_at;
+        const data    = dataStr ? new Date(dataStr).toLocaleDateString('pt-BR') : '—';
 
         document.getElementById('header-titulo').textContent = unidade;
         document.getElementById('header-sub').innerHTML =
