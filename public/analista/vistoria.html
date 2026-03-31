@@ -228,7 +228,11 @@
         if (vistoriaAtual.status === 'em_andamento') {
           acoes.innerHTML = `<button class="btn btn-warning btn-sm" onclick="finalizar()">Finalizar</button>`;
         } else if (vistoriaAtual.status === 'finalizada') {
-          acoes.innerHTML = `<button class="btn btn-success btn-sm" onclick="publicar()">Publicar</button>`;
+          acoes.innerHTML = `
+            <button class="btn btn-neutral btn-sm" onclick="baixarPDF()">⬇ PDF</button>
+            <button class="btn btn-success btn-sm" onclick="publicar()">Publicar</button>`;
+        } else if (vistoriaAtual.status === 'publicada') {
+          acoes.innerHTML = `<button class="btn btn-neutral btn-sm" onclick="baixarPDF()">⬇ PDF</button>`;
         }
 
         // Esconde botão nova ocorrência se não estiver em andamento
@@ -412,6 +416,30 @@
       if (!confirm('Publicar esta vistoria? Ela ficará visível para os usuários da unidade.')) return;
       try { await vistorias.publicar(visId); carregar(); }
       catch (err) { alert(err.message); }
+    };
+
+    window.baixarPDF = () => {
+      const token = localStorage.getItem('token');
+      const url   = `/api/vistorias/${visId}/pdf`;
+      // Abre em nova aba com header de autenticação via fetch + blob
+      const btn = document.querySelector('[onclick="baixarPDF()"]');
+      const original = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = 'Gerando...';
+      fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => {
+          if (!r.ok) throw new Error('Erro ao gerar PDF');
+          return r.blob();
+        })
+        .then(blob => {
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = `vistoria-${visId.slice(0, 8)}.pdf`;
+          a.click();
+          URL.revokeObjectURL(a.href);
+        })
+        .catch(err => alert(err.message))
+        .finally(() => { btn.disabled = false; btn.textContent = original; });
     };
 
     window.logout = async () => { await auth.logout(); window.location.href = '/index.html'; };
