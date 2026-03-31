@@ -39,6 +39,20 @@ async function apiFetch(path, options = {}) {
   return data;
 }
 
+// ── Fetch helper para FormData (upload de arquivos) ────────────
+async function apiFetchForm(path, options = {}) {
+  const token = getToken();
+  const headers = {
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    ...(options.headers || {})
+    // Content-Type não definido — o browser define automaticamente com boundary
+  };
+  const res  = await fetch(BASE_URL + path, { ...options, headers });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || data.message || 'Erro desconhecido');
+  return data;
+}
+
 // ── Auth ───────────────────────────────────────────────────────
 export const auth = {
   async login(email, senha) {
@@ -90,6 +104,40 @@ export const ocorrencias = {
   criar:   (vistoria_id, body) => apiFetch(`/api/vistorias/${vistoria_id}/ocorrencias`, { method: 'POST', body: JSON.stringify(body) }),
   editar:  (id, body)          => apiFetch(`/api/ocorrencias/${id}`, { method: 'PUT',    body: JSON.stringify(body) }),
   deletar: (id)                => apiFetch(`/api/ocorrencias/${id}`, { method: 'DELETE' })
+};
+
+// ── Unidades ───────────────────────────────────────────────────
+export const unidades = {
+  listar:      (params = {}) => apiFetch(`/api/unidades?${new URLSearchParams(params)}`),
+  detalhe:     (id)          => apiFetch(`/api/unidades/${id}`),
+  criar:       (formData)    => apiFetchForm('/api/unidades',    { method: 'POST', body: formData }),
+  editar:      (id, formData)=> apiFetchForm(`/api/unidades/${id}`, { method: 'PUT', body: formData }),
+  ativar:      (id)          => apiFetch(`/api/unidades/${id}/ativar`,    { method: 'PATCH' }),
+  desativar:   (id)          => apiFetch(`/api/unidades/${id}/desativar`, { method: 'PATCH' }),
+  removerLogo: (id)          => apiFetch(`/api/unidades/${id}/logo`,      { method: 'DELETE' })
+};
+
+// ── Itens de verificação ───────────────────────────────────────
+export const itens = {
+  listar:    (ativo)    => apiFetch(`/api/itens${ativo !== undefined ? `?ativo=${ativo}` : ''}`),
+  criar:     (body)     => apiFetch('/api/itens',       { method: 'POST',   body: JSON.stringify(body) }),
+  editar:    (id, body) => apiFetch(`/api/itens/${id}`, { method: 'PUT',    body: JSON.stringify(body) }),
+  ativar:    (id)       => apiFetch(`/api/itens/${id}/ativar`,    { method: 'PATCH' }),
+  desativar: (id)       => apiFetch(`/api/itens/${id}/desativar`, { method: 'PATCH' })
+};
+
+// ── Estrutura (áreas + itens por unidade) ─────────────────────
+export const estrutura = {
+  listarAreas:   (unidade_id)       => apiFetch(`/api/unidades/${unidade_id}/areas?incluir_inativas=true`),
+  criarArea:     (unidade_id, body) => apiFetch(`/api/unidades/${unidade_id}/areas`, { method: 'POST',   body: JSON.stringify(body) }),
+  editarArea:    (area_id, body)    => apiFetch(`/api/areas/${area_id}`,             { method: 'PUT',    body: JSON.stringify(body) }),
+  ativarArea:    (area_id)          => apiFetch(`/api/areas/${area_id}/ativar`,      { method: 'PATCH' }),
+  desativarArea: (area_id)          => apiFetch(`/api/areas/${area_id}/desativar`,   { method: 'PATCH' }),
+  deletarArea:   (area_id)          => apiFetch(`/api/areas/${area_id}`,             { method: 'DELETE' }),
+  listarItens:   (area_id)          => apiFetch(`/api/areas/${area_id}/itens`),
+  adicionarItem: (area_id, body)    => apiFetch(`/api/areas/${area_id}/itens`,     { method: 'POST',   body: JSON.stringify(body) }),
+  removerItem:   (area_item_id)     => apiFetch(`/api/area-itens/${area_item_id}`, { method: 'DELETE' }),
+  checklist:     (unidade_id)       => apiFetch(`/api/unidades/${unidade_id}/checklist`)
 };
 
 // ── Áreas ──────────────────────────────────────────────────────

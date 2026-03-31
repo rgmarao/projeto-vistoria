@@ -13,6 +13,7 @@ import empresasRoutes from './routes/empresas.js';
 import usuariosRoutes from './routes/usuarios.js';
 import perfisRoutes from './routes/perfis.js';
 import relatoriosRoutes from './routes/relatorios.js';
+import itensRoutes from './routes/itens.js';
 
 const app = express();
 
@@ -45,6 +46,7 @@ app.use('/api', areasRoutes);               // genérica
 app.use('/api', fotosRoutes);               // genérica por último
 app.use("/api/perfis", perfisRoutes);
 app.use('/api', relatoriosRoutes);
+app.use('/api/itens', itensRoutes);
 
 // Rota não encontrada
 app.use((req, res) => {

@@ -229,10 +229,13 @@
           acoes.innerHTML = `<button class="btn btn-warning btn-sm" onclick="finalizar()">Finalizar</button>`;
         } else if (vistoriaAtual.status === 'finalizada') {
           acoes.innerHTML = `
-            <button class="btn btn-neutral btn-sm" onclick="baixarPDF()">⬇ PDF</button>
+            <button class="btn btn-neutral btn-sm" onclick="baixarPDF()">⬇ Completo</button>
+            <button class="btn btn-danger btn-sm"  onclick="baixarPDFPendencias()">⬇ Pendências</button>
             <button class="btn btn-success btn-sm" onclick="publicar()">Publicar</button>`;
         } else if (vistoriaAtual.status === 'publicada') {
-          acoes.innerHTML = `<button class="btn btn-neutral btn-sm" onclick="baixarPDF()">⬇ PDF</button>`;
+          acoes.innerHTML = `
+            <button class="btn btn-neutral btn-sm" onclick="baixarPDF()">⬇ Completo</button>
+            <button class="btn btn-danger btn-sm"  onclick="baixarPDFPendencias()">⬇ Pendências</button>`;
         }
 
         // Esconde botão nova ocorrência se não estiver em andamento
@@ -418,29 +421,26 @@
       catch (err) { alert(err.message); }
     };
 
-    window.baixarPDF = () => {
+    function downloadPDF(url, filename) {
       const token = localStorage.getItem('token');
-      const url   = `/api/vistorias/${visId}/pdf`;
-      // Abre em nova aba com header de autenticação via fetch + blob
-      const btn = document.querySelector('[onclick="baixarPDF()"]');
-      const original = btn.textContent;
-      btn.disabled = true;
-      btn.textContent = 'Gerando...';
+      const btn = document.querySelector(`[onclick="baixarPDF()"], [onclick="baixarPDFPendencias()"]`);
       fetch(url, { headers: { Authorization: `Bearer ${token}` } })
-        .then(r => {
-          if (!r.ok) throw new Error('Erro ao gerar PDF');
-          return r.blob();
-        })
+        .then(r => { if (!r.ok) throw new Error('Erro ao gerar PDF'); return r.blob(); })
         .then(blob => {
           const a = document.createElement('a');
           a.href = URL.createObjectURL(blob);
-          a.download = `vistoria-${visId.slice(0, 8)}.pdf`;
+          a.download = filename;
           a.click();
           URL.revokeObjectURL(a.href);
         })
-        .catch(err => alert(err.message))
-        .finally(() => { btn.disabled = false; btn.textContent = original; });
-    };
+        .catch(err => alert(err.message));
+    }
+
+    window.baixarPDF = () =>
+      downloadPDF(`/api/vistorias/${visId}/pdf`, `vistoria-${visId.slice(0,8)}.pdf`);
+
+    window.baixarPDFPendencias = () =>
+      downloadPDF(`/api/vistorias/${visId}/pdf/pendencias`, `pendencias-${visId.slice(0,8)}.pdf`);
 
     window.logout = async () => { await auth.logout(); window.location.href = '/index.html'; };
 

@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin — Itens de Verificação</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <style>
+    .filter-bar {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .filter-bar input[type="text"] {
+      flex: 1;
+      min-width: 200px;
+      height: 36px;
+      padding: 0 10px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    .filter-bar select {
+      height: 36px;
+      padding: 0 10px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    #count-badge {
+      font-size: 13px;
+      color: #888;
+      font-weight: 400;
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar">
+    <span class="navbar-brand">🏗️ Vistoria Online</span>
+    <div class="navbar-nav">
+      <a href="/admin/index.html">Dashboard</a>
+      <a href="/admin/empresas.html">Empresas</a>
+      <a href="/admin/unidades.html">Unidades</a>
+      <a href="/admin/itens.html" class="active">Itens</a>
+      <a href="/admin/usuarios.html">Usuários</a>
+      <a href="#" onclick="logout()">Sair</a>
+    </div>
+    <span class="navbar-user" id="navbar-user"></span>
+  </nav>
+
+  <div class="container main-content">
+
+    <div class="section-header">
+      <h2>Itens de Verificação <span id="count-badge"></span></h2>
+      <button class="btn btn-primary btn-sm" onclick="abrirModalCriar()">+ Novo Item</button>
+    </div>
+
+    <div class="filter-bar">
+      <input type="text" id="filtro-busca" placeholder="Buscar por descrição..." oninput="filtrar()" />
+      <select id="filtro-ativo" onchange="filtrar()">
+        <option value="">Todos</option>
+        <option value="true" selected>Ativos</option>
+        <option value="false">Inativos</option>
+      </select>
+    </div>
+
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Descrição</th>
+              <th>Status</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="tabela-itens">
+            <tr><td colspan="3" style="text-align:center;color:#999">Carregando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Modal Criar / Editar -->
+  <div class="modal-overlay" id="modal">
+    <div class="modal" style="max-width:440px">
+      <div class="modal-header">
+        <h3 id="modal-titulo">Novo Item</h3>
+        <button class="modal-close" onclick="fecharModal()">✕</button>
+      </div>
+      <div class="alert alert-error" id="modal-erro"></div>
+      <div class="form-group">
+        <label>Descrição *</label>
+        <textarea id="campo-descricao" rows="3" placeholder="Descreva o item de verificação..."></textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-neutral btn-sm" onclick="fecharModal()">Cancelar</button>
+        <button class="btn btn-primary btn-sm" id="btn-salvar" onclick="salvar()">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { requireLogin, requireRole, getUser, auth } from '/js/api.js';
+    import { itens } from '/js/api.js';
+
+    requireLogin();
+    requireRole('admin');
+    document.getElementById('navbar-user').textContent = getUser()?.nome || '';
+
+    let editandoId  = null;
+    let todosItens  = [];
+
+    async function carregar() {
+      try {
+        const res = await itens.listar();
+        todosItens = res.data || [];
+        filtrar();
+      } catch (err) {
+        document.getElementById('tabela-itens').innerHTML =
+          `<tr><td colspan="3" style="color:#c62828">${err.message}</td></tr>`;
+      }
+    }
+
+    window.filtrar = () => {
+      const busca = document.getElementById('filtro-busca').value.toLowerCase();
+      const ativo = document.getElementById('filtro-ativo').value;
+
+      let lista = todosItens;
+      if (ativo !== '')   lista = lista.filter(i => String(i.ativo) === ativo);
+      if (busca)          lista = lista.filter(i => i.descricao.toLowerCase().includes(busca));
+
+      document.getElementById('count-badge').textContent = `(${lista.length})`;
+
+      const tbody = document.getElementById('tabela-itens');
+      if (!lista.length) {
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#999">Nenhum item encontrado.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = lista.map(i => `
+        <tr>
+          <td>${i.descricao}</td>
+          <td><span class="badge ${i.ativo ? 'badge-green' : 'badge-red'}">${i.ativo ? 'Ativo' : 'Inativo'}</span></td>
+          <td class="actions">
+            <button class="btn btn-neutral btn-sm"
+              onclick="editar('${i.id}', ${JSON.stringify(i.descricao)})">Editar</button>
+            <button class="btn ${i.ativo ? 'btn-danger' : 'btn-success'} btn-sm"
+              onclick="toggleAtivo('${i.id}',${i.ativo})">
+              ${i.ativo ? 'Desativar' : 'Ativar'}
+            </button>
+          </td>
+        </tr>`).join('');
+    };
+
+    window.abrirModalCriar = () => {
+      editandoId = null;
+      document.getElementById('modal-titulo').textContent   = 'Novo Item';
+      document.getElementById('campo-descricao').value      = '';
+      document.getElementById('modal-erro').classList.remove('show');
+      document.getElementById('modal').classList.add('show');
+      setTimeout(() => document.getElementById('campo-descricao').focus(), 100);
+    };
+
+    window.editar = (id, descricao) => {
+      editandoId = id;
+      document.getElementById('modal-titulo').textContent   = 'Editar Item';
+      document.getElementById('campo-descricao').value      = descricao;
+      document.getElementById('modal-erro').classList.remove('show');
+      document.getElementById('modal').classList.add('show');
+    };
+
+    window.fecharModal = () => document.getElementById('modal').classList.remove('show');
+
+    window.salvar = async () => {
+      const descricao = document.getElementById('campo-descricao').value.trim();
+      const erro = document.getElementById('modal-erro');
+      const btn  = document.getElementById('btn-salvar');
+
+      if (!descricao) { erro.textContent = 'Descrição é obrigatória.'; erro.classList.add('show'); return; }
+
+      btn.disabled = true;
+      erro.classList.remove('show');
+      try {
+        if (editandoId) await itens.editar(editandoId, { descricao });
+        else            await itens.criar({ descricao });
+        fecharModal();
+        carregar();
+      } catch (err) {
+        erro.textContent = err.message;
+        erro.classList.add('show');
+      } finally {
+        btn.disabled = false;
+      }
+    };
+
+    window.toggleAtivo = async (id, ativo) => {
+      try {
+        if (ativo) await itens.desativar(id);
+        else       await itens.ativar(id);
+        carregar();
+      } catch (err) {
+        alert(err.message);
+      }
+    };
+
+    window.logout = async () => { await auth.logout(); window.location.href = '/index.html'; };
+
+    carregar();
+  </script>
+
+</body>
+</html>

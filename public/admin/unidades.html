@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin — Unidades</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <style>
+    .logo-thumb {
+      width: 40px; height: 40px;
+      object-fit: cover;
+      border-radius: 6px;
+      border: 1px solid #eee;
+    }
+    .logo-placeholder {
+      width: 40px; height: 40px;
+      background: #f0f0f0;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      color: #bbb;
+    }
+    .filter-bar {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .filter-bar select, .filter-bar input {
+      height: 36px;
+      padding: 0 10px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    .logo-preview {
+      margin-top: 8px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .logo-preview img {
+      width: 60px; height: 60px;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar">
+    <span class="navbar-brand">🏗️ Vistoria Online</span>
+    <div class="navbar-nav">
+      <a href="/admin/index.html">Dashboard</a>
+      <a href="/admin/empresas.html">Empresas</a>
+      <a href="/admin/unidades.html" class="active">Unidades</a>
+      <a href="/admin/itens.html">Itens</a>
+      <a href="/admin/usuarios.html">Usuários</a>
+      <a href="#" onclick="logout()">Sair</a>
+    </div>
+    <span class="navbar-user" id="navbar-user"></span>
+  </nav>
+
+  <div class="container main-content">
+
+    <div class="section-header">
+      <h2>Unidades</h2>
+      <button class="btn btn-primary btn-sm" onclick="abrirModalCriar()">+ Nova Unidade</button>
+    </div>
+
+    <!-- Filtros -->
+    <div class="filter-bar">
+      <select id="filtro-empresa" onchange="carregar()">
+        <option value="">Todas as empresas</option>
+      </select>
+      <select id="filtro-ativo" onchange="carregar()">
+        <option value="">Todos os status</option>
+        <option value="true">Ativas</option>
+        <option value="false">Inativas</option>
+      </select>
+    </div>
+
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:50px">Logo</th>
+              <th>Nome</th>
+              <th>Empresa</th>
+              <th>Endereço</th>
+              <th>Status</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="tabela-unidades">
+            <tr><td colspan="6" style="text-align:center;color:#999">Carregando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Modal Criar / Editar -->
+  <div class="modal-overlay" id="modal">
+    <div class="modal" style="max-width:480px">
+      <div class="modal-header">
+        <h3 id="modal-titulo">Nova Unidade</h3>
+        <button class="modal-close" onclick="fecharModal()">✕</button>
+      </div>
+      <div class="alert alert-error" id="modal-erro"></div>
+      <div class="form-group">
+        <label>Empresa *</label>
+        <select id="campo-empresa"></select>
+      </div>
+      <div class="form-group">
+        <label>Nome *</label>
+        <input type="text" id="campo-nome" placeholder="Nome da unidade" />
+      </div>
+      <div class="form-group">
+        <label>Endereço</label>
+        <input type="text" id="campo-endereco" placeholder="Endereço completo" />
+      </div>
+      <div class="form-group">
+        <label>Logo</label>
+        <input type="file" id="campo-logo" accept="image/jpeg,image/png,image/webp" onchange="previewLogo()" />
+        <div class="logo-preview" id="logo-preview" style="display:none">
+          <img id="logo-preview-img" src="" alt="Preview" />
+          <button class="btn btn-neutral btn-sm" type="button" onclick="removerLogoPreview()">Remover</button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-neutral btn-sm" onclick="fecharModal()">Cancelar</button>
+        <button class="btn btn-primary btn-sm" id="btn-salvar" onclick="salvar()">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { requireLogin, requireRole, getUser, auth } from '/js/api.js';
+    import { empresas, unidades } from '/js/api.js';
+
+    requireLogin();
+    requireRole('admin');
+    document.getElementById('navbar-user').textContent = getUser()?.nome || '';
+
+    let editandoId   = null;
+    let logoAtualUrl = null; // URL assinada da logo atual (ao editar)
+
+    // ── Carrega empresas no filtro e no select do modal ──────────
+    async function carregarEmpresas() {
+      const res = await empresas.listar();
+      const opts = (res.data || []).map(e => `<option value="${e.id}">${e.nome}</option>`).join('');
+
+      document.getElementById('filtro-empresa').innerHTML =
+        `<option value="">Todas as empresas</option>${opts}`;
+      document.getElementById('campo-empresa').innerHTML =
+        `<option value="">Selecione a empresa...</option>${opts}`;
+    }
+
+    // ── Carrega unidades com filtros ─────────────────────────────
+    window.carregar = async function() {
+      const tbody      = document.getElementById('tabela-unidades');
+      const empresa_id = document.getElementById('filtro-empresa').value;
+      const ativo      = document.getElementById('filtro-ativo').value;
+
+      try {
+        const params = {};
+        if (empresa_id) params.empresa_id = empresa_id;
+        if (ativo !== '') params.ativo = ativo;
+
+        const res = await unidades.listar(params);
+        if (!res.data?.length) {
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999">Nenhuma unidade encontrada.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = res.data.map(u => `
+          <tr>
+            <td>
+              ${u.logo_url
+                ? `<img class="logo-thumb" src="${u.logo_url_assinada || ''}" alt="logo" />`
+                : `<span class="logo-placeholder">🏢</span>`}
+            </td>
+            <td><strong>${u.nome}</strong></td>
+            <td>${u.empresas?.nome || '—'}</td>
+            <td style="font-size:13px;color:#666">${u.endereco || '—'}</td>
+            <td><span class="badge ${u.ativo ? 'badge-green' : 'badge-red'}">${u.ativo ? 'Ativa' : 'Inativa'}</span></td>
+            <td class="actions">
+              <a href="/admin/estrutura.html?id=${u.id}" class="btn btn-neutral btn-sm">Estrutura</a>
+              <button class="btn btn-neutral btn-sm"
+                onclick="editar('${u.id}','${esc(u.nome)}','${esc(u.endereco||'')}','${u.empresa_id}','${u.logo_url_assinada||''}')">
+                Editar
+              </button>
+              <button class="btn ${u.ativo ? 'btn-danger' : 'btn-success'} btn-sm"
+                onclick="toggleAtivo('${u.id}',${u.ativo})">
+                ${u.ativo ? 'Desativar' : 'Ativar'}
+              </button>
+            </td>
+          </tr>`).join('');
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="6" style="color:#c62828">${err.message}</td></tr>`;
+      }
+    };
+
+    function esc(str) { return str.replace(/'/g, "\\'"); }
+
+    // ── Modal ────────────────────────────────────────────────────
+    window.abrirModalCriar = () => {
+      editandoId   = null;
+      logoAtualUrl = null;
+      document.getElementById('modal-titulo').textContent = 'Nova Unidade';
+      document.getElementById('campo-nome').value     = '';
+      document.getElementById('campo-endereco').value = '';
+      document.getElementById('campo-logo').value     = '';
+      document.getElementById('campo-empresa').value  = '';
+      document.getElementById('logo-preview').style.display = 'none';
+      document.getElementById('modal-erro').classList.remove('show');
+      document.getElementById('modal').classList.add('show');
+    };
+
+    window.editar = (id, nome, endereco, empresa_id, logoUrl) => {
+      editandoId   = id;
+      logoAtualUrl = logoUrl || null;
+      document.getElementById('modal-titulo').textContent = 'Editar Unidade';
+      document.getElementById('campo-nome').value     = nome;
+      document.getElementById('campo-endereco').value = endereco;
+      document.getElementById('campo-empresa').value  = empresa_id;
+      document.getElementById('campo-logo').value     = '';
+      document.getElementById('modal-erro').classList.remove('show');
+
+      if (logoUrl) {
+        document.getElementById('logo-preview-img').src = logoUrl;
+        document.getElementById('logo-preview').style.display = 'flex';
+      } else {
+        document.getElementById('logo-preview').style.display = 'none';
+      }
+
+      document.getElementById('modal').classList.add('show');
+    };
+
+    window.fecharModal = () => document.getElementById('modal').classList.remove('show');
+
+    window.previewLogo = () => {
+      const file = document.getElementById('campo-logo').files[0];
+      if (!file) return;
+      const url = URL.createObjectURL(file);
+      document.getElementById('logo-preview-img').src = url;
+      document.getElementById('logo-preview').style.display = 'flex';
+    };
+
+    window.removerLogoPreview = () => {
+      document.getElementById('campo-logo').value = '';
+      document.getElementById('logo-preview').style.display = 'none';
+      logoAtualUrl = null;
+    };
+
+    window.salvar = async () => {
+      const nome      = document.getElementById('campo-nome').value.trim();
+      const endereco  = document.getElementById('campo-endereco').value.trim();
+      const empresa_id= document.getElementById('campo-empresa').value;
+      const logoFile  = document.getElementById('campo-logo').files[0];
+      const erro      = document.getElementById('modal-erro');
+      const btn       = document.getElementById('btn-salvar');
+
+      if (!nome)       { erro.textContent = 'Nome é obrigatório.';    erro.classList.add('show'); return; }
+      if (!editandoId && !empresa_id) {
+        erro.textContent = 'Selecione a empresa.'; erro.classList.add('show'); return;
+      }
+
+      btn.disabled = true;
+      erro.classList.remove('show');
+
+      try {
+        const fd = new FormData();
+        fd.append('nome', nome);
+        fd.append('endereco', endereco);
+        if (!editandoId) fd.append('empresa_id', empresa_id);
+        if (logoFile) fd.append('logo', logoFile);
+
+        if (editandoId) {
+          await unidades.editar(editandoId, fd);
+        } else {
+          await unidades.criar(fd);
+        }
+        fecharModal();
+        carregar();
+      } catch (err) {
+        erro.textContent = err.message;
+        erro.classList.add('show');
+      } finally {
+        btn.disabled = false;
+      }
+    };
+
+    window.toggleAtivo = async (id, ativo) => {
+      try {
+        if (ativo) await unidades.desativar(id);
+        else       await unidades.ativar(id);
+        carregar();
+      } catch (err) {
+        alert(err.message);
+      }
+    };
+
+    window.logout = async () => { await auth.logout(); window.location.href = '/index.html'; };
+
+    await carregarEmpresas();
+    carregar();
+  </script>
+
+</body>
+</html>
