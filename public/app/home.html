@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#1565c0" />
+  <title>Vistoria — Início</title>
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="stylesheet" href="/app/app.css" />
+</head>
+<body>
+
+  <header class="app-header">
+    <div>
+      <h1>🏗️ Vistoria Online</h1>
+      <div class="sub" id="user-nome"></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <span id="conn-badge" title="Status de conexão"></span>
+      <button onclick="logout()"
+        style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;padding:0"
+        title="Sair">⏻</button>
+    </div>
+  </header>
+
+  <!-- Barra de sincronização (aparece quando há prontos) -->
+  <div class="sync-bar" id="sync-bar" style="display:none">
+    <span id="sync-msg"></span>
+    <button class="btn-sync" id="btn-sync" onclick="sincronizar()">Sincronizar</button>
+  </div>
+
+  <!-- Minhas Unidades -->
+  <div class="section-label">Minhas Unidades</div>
+  <div id="lista-unidades">
+    <div class="empty"><span>⏳</span>Carregando unidades...</div>
+  </div>
+
+  <!-- Rascunhos / Prontos -->
+  <div id="secao-rascunhos" style="display:none">
+    <div class="section-label">Em andamento</div>
+    <div id="lista-rascunhos"></div>
+  </div>
+
+  <div class="pb-bar"></div>
+
+  <script type="module">
+    import { isLoggedIn, getUser, getToken, clearSession } from '/js/api.js';
+    import { db, dataURLtoBlob } from '/js/db.js';
+
+    if (!isLoggedIn()) { window.location.replace('/app/index.html'); }
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(console.error);
+    }
+
+    const user = getUser();
+    document.getElementById('user-nome').textContent = user?.nome || user?.email || '';
+
+    // ── Indicador de conexão ──────────────────────────────────
+    function atualizarConexao() {
+      const el = document.getElementById('conn-badge');
+      if (navigator.onLine) {
+        el.innerHTML = '<span class="online-dot"></span>';
+        el.title = 'Online';
+      } else {
+        el.innerHTML = '<span class="offline-dot"></span>';
+        el.title = 'Offline — dados salvos localmente';
+      }
+    }
+    atualizarConexao();
+    window.addEventListener('online',  () => { atualizarConexao(); carregarUnidades(); });
+    window.addEventListener('offline', atualizarConexao);
+
+    // ── Carrega unidades ──────────────────────────────────────
+    async function carregarUnidades() {
+      const div = document.getElementById('lista-unidades');
+      let unidades = [];
+
+      if (navigator.onLine) {
+        try {
+          // Busca unidades vinculadas ao perfil do usuário
+          const r = await fetch(`/api/perfis/${user.id}/unidades`, {
+            headers: { Authorization: 'Bearer ' + getToken() }
+          });
+          const d = await r.json();
+          unidades = (d.data || []).map(v => v.unidades).filter(Boolean);
+
+          // Baixa e armazena checklist de cada unidade em cache
+          for (const u of unidades) {
+            try {
+              const rc = await fetch(`/api/unidades/${u.id}/checklist`, {
+                headers: { Authorization: 'Bearer ' + getToken() }
+              });
+              const dc = await rc.json();
+              if (dc.ok && dc.data) {
+                await db.salvarChecklist({
+                  unidade_id:   u.id,
+                  unidade_nome: u.nome,
+                  empresa_nome: u.empresas?.nome || '',
+                  endereco:     u.endereco || '',
+                  areas:        dc.data,
+                  cached_at:    new Date().toISOString()
+                });
+              }
+            } catch { /* falha parcial — OK */ }
+          }
+        } catch { /* sem rede */ }
+      }
+
+      // Fallback: usa checklists em cache
+      if (!unidades.length) {
+        const cached = await db.listarChecklists();
+        unidades = cached.map(c => ({
+          id:       c.unidade_id,
+          nome:     c.unidade_nome,
+          empresas: { nome: c.empresa_nome },
+          endereco: c.endereco,
+          _cached:  true
+        }));
+      }
+
+      if (!unidades.length) {
+        div.innerHTML = '<div class="empty"><span>🏢</span>Nenhuma unidade vinculada à sua conta.<br>Contate o administrador.</div>';
+        return;
+      }
+
+      div.innerHTML = unidades.map(u => `
+        <div class="unit-card">
+          <div class="unit-card-info">
+            <h3>${u.nome}</h3>
+            <p>${u.empresas?.nome || ''}${u._cached ? ' · <em>cache</em>' : ''}</p>
+          </div>
+          <button class="btn-nova"
+            onclick="novaVistoria('${u.id}','${esc(u.nome)}','${esc(u.empresas?.nome||'')}')">
+            + Nova
+          </button>
+        </div>`).join('');
+    }
+
+    // ── Carrega rascunhos e prontos ───────────────────────────
+    async function carregarRascunhos() {
+      const todos  = await db.listarVistorias();
+      const ativos = todos.filter(v => v.status !== 'sincronizado');
+      const prontos = ativos.filter(v => v.status === 'pronto');
+
+      // Sync bar
+      const syncBar = document.getElementById('sync-bar');
+      if (prontos.length) {
+        syncBar.style.display = 'flex';
+        document.getElementById('sync-msg').textContent =
+          `${prontos.length} vistoria(s) pronta(s) para envio`;
+      } else {
+        syncBar.style.display = 'none';
+      }
+
+      const secao = document.getElementById('secao-rascunhos');
+      const div   = document.getElementById('lista-rascunhos');
+
+      if (!ativos.length) { secao.style.display = 'none'; return; }
+      secao.style.display = '';
+
+      div.innerHTML = ativos
+        .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
+        .map(v => {
+          const totalItens = v.areas?.reduce((s, a) => s + a.itens.length, 0) || 0;
+          const preench    = v.areas?.reduce((s, a) => s + a.itens.filter(i => i.situacao).length, 0) || 0;
+          const label      = v.status === 'pronto' ? '✅ Pronto para envio' : `✏️ ${preench}/${totalItens} itens`;
+          return `
+            <div class="draft-card ${v.status === 'pronto' ? 'pronto' : ''}">
+              <div class="draft-card-info">
+                <h3>${v.unidade_nome}</h3>
+                <p>${new Date(v.created_at).toLocaleDateString('pt-BR')} · ${label}</p>
+              </div>
+              <div class="draft-acoes">
+                ${v.status === 'rascunho'
+                  ? `<button class="btn-continuar" onclick="continuarVistoria('${v.local_id}')">Continuar</button>`
+                  : ''}
+                <button class="btn-excluir" onclick="excluirRascunho('${v.local_id}')">🗑</button>
+              </div>
+            </div>`;
+        }).join('');
+    }
+
+    // ── Ações de navegação ────────────────────────────────────
+    window.novaVistoria = (unidade_id, nome, empresa) => {
+      const p = new URLSearchParams({ unidade_id, nome, empresa });
+      window.location.href = '/app/vistoria.html?' + p;
+    };
+
+    window.continuarVistoria = (local_id) => {
+      window.location.href = '/app/vistoria.html?local_id=' + local_id;
+    };
+
+    window.excluirRascunho = async (local_id) => {
+      if (!confirm('Excluir este rascunho? Os dados não poderão ser recuperados.')) return;
+      await db.deletarVistoria(local_id);
+      carregarRascunhos();
+    };
+
+    // ── Sincronização ─────────────────────────────────────────
+    window.sincronizar = async () => {
+      if (!navigator.onLine) {
+        alert('Sem conexão. Conecte-se à internet e tente novamente.');
+        return;
+      }
+      const btn = document.getElementById('btn-sync');
+      btn.disabled    = true;
+      btn.textContent = 'Enviando...';
+
+      const todos   = await db.listarVistorias();
+      const prontos = todos.filter(v => v.status === 'pronto');
+      let ok = 0, erros = 0;
+
+      for (const v of prontos) {
+        try {
+          await enviarVistoria(v);
+          ok++;
+        } catch (err) {
+          erros++;
+          console.error('[sync]', v.local_id, err.message);
+        }
+      }
+
+      btn.disabled    = false;
+      btn.textContent = 'Sincronizar';
+      alert(erros > 0
+        ? `${ok} enviada(s) com sucesso, ${erros} com erro. Verifique o console.`
+        : `✅ ${ok} vistoria(s) enviada(s) com sucesso!`);
+      carregarRascunhos();
+    };
+
+    async function enviarVistoria(v) {
+      const token   = getToken();
+      const headers = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token };
+
+      // 1. Cria vistoria no servidor
+      const rVis = await fetch('/api/vistorias', {
+        method: 'POST', headers,
+        body: JSON.stringify({ unidade_id: v.unidade_id })
+      });
+      const dVis = await rVis.json();
+      if (!rVis.ok) throw new Error(dVis.error || 'Erro ao criar vistoria');
+      const visId = dVis.vistoria?.id || dVis.data?.id;
+
+      // 2. Cria ocorrências
+      for (const area of v.areas || []) {
+        for (const item of area.itens || []) {
+          if (!item.situacao) continue; // não avaliado → pula
+
+          const rOc = await fetch(`/api/vistorias/${visId}/ocorrencias`, {
+            method: 'POST', headers,
+            body: JSON.stringify({
+              descricao:    item.descricao,
+              status:       item.situacao,
+              origem:       'app',
+              recomendacao: item.observacao || null
+            })
+          });
+          const dOc = await rOc.json();
+          if (!rOc.ok) continue;
+          const ocId = dOc.data?.id || dOc.ocorrencia?.id;
+
+          // 3. Upload das fotos
+          for (const slot of [1, 2]) {
+            const fotoData = slot === 1 ? item.foto1 : item.foto2;
+            if (!fotoData || !ocId) continue;
+            try {
+              const fd = new FormData();
+              fd.append('foto', dataURLtoBlob(fotoData), `foto_slot${slot}.jpg`);
+              fd.append('slot', String(slot));
+              await fetch(`/api/ocorrencias/${ocId}/fotos`, {
+                method: 'POST',
+                headers: { Authorization: 'Bearer ' + token },
+                body: fd
+              });
+            } catch { /* foto falhou — não bloqueia */ }
+          }
+        }
+      }
+
+      // 4. Marca como sincronizado
+      await db.salvarVistoria({ ...v, status: 'sincronizado', server_id: visId });
+    }
+
+    window.logout = async () => {
+      if (!confirm('Sair do aplicativo?')) return;
+      clearSession();
+      window.location.replace('/app/index.html');
+    };
+
+    function esc(s) { return String(s).replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
+
+    // Init
+    carregarUnidades();
+    carregarRascunhos();
+  </script>
+
+</body>
+</html>

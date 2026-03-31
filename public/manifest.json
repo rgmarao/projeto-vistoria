@@ -1,0 +1,14 @@
+{
+  "name": "Vistoria Online",
+  "short_name": "Vistoria",
+  "description": "Aplicativo de campo para vistorias",
+  "start_url": "/app/index.html",
+  "display": "standalone",
+  "background_color": "#1565c0",
+  "theme_color": "#1565c0",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

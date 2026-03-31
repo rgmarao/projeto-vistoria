@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#1565c0" />
+  <title>Vistoria</title>
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="stylesheet" href="/app/app.css" />
+</head>
+<body>
+
+  <header class="app-header">
+    <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
+      <button onclick="history.back()"
+        style="background:none;border:none;color:#fff;font-size:24px;cursor:pointer;padding:0;line-height:1;flex-shrink:0">
+        ‹
+      </button>
+      <div style="min-width:0">
+        <h1 style="font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" id="h-titulo">Carregando...</h1>
+        <div class="sub" id="h-sub"></div>
+      </div>
+    </div>
+    <button id="btn-salvar-topo" onclick="salvarRascunho()"
+      style="background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:600;cursor:pointer;flex-shrink:0;margin-left:8px">
+      Salvar
+    </button>
+  </header>
+
+  <!-- Barra de progresso -->
+  <div class="progress-bar"><div class="progress-fill" id="prog-fill" style="width:0%"></div></div>
+  <div class="progress-txt" id="prog-txt"></div>
+
+  <!-- Áreas + Itens -->
+  <div id="checklist"></div>
+
+  <!-- Input file oculto para câmera -->
+  <input type="file" id="file-input" accept="image/*" capture="environment"
+    style="display:none" onchange="onFotoCapturada()" />
+
+  <div class="pb-bar"></div>
+
+  <!-- Barra inferior -->
+  <div class="bottom-bar">
+    <button class="btn-bar btn-bar-sec"  onclick="salvarRascunho()">💾 Salvar rascunho</button>
+    <button class="btn-bar btn-bar-prim" onclick="finalizarVistoria()">✅ Finalizar</button>
+  </div>
+
+  <script type="module">
+    import { isLoggedIn } from '/js/api.js';
+    import { db, uuid } from '/js/db.js';
+
+    if (!isLoggedIn()) { window.location.replace('/app/index.html'); }
+
+    const params     = new URLSearchParams(location.search);
+    const localId    = params.get('local_id');
+    const unidadeId  = params.get('unidade_id');
+    const nomeParam  = params.get('nome')    || '';
+    const empresaParam = params.get('empresa') || '';
+
+    let vistoria = null;
+    let fotoAlvo = null; // { ai, ii, slot }
+
+    // ── Inicialização ─────────────────────────────────────────
+    async function init() {
+      if (localId) {
+        vistoria = await db.getVistoria(localId);
+        if (!vistoria) { alert('Rascunho não encontrado.'); history.back(); return; }
+      } else {
+        const cl = await db.getChecklist(unidadeId);
+        if (!cl) {
+          alert('Estrutura desta unidade não encontrada no dispositivo.\n\nConecte-se à internet e acesse a tela inicial para baixar o checklist.');
+          history.back(); return;
+        }
+        if (!cl.areas?.length) {
+          alert('Esta unidade não possui áreas configuradas.\nConfigure a estrutura na web antes de fazer a vistoria.');
+          history.back(); return;
+        }
+        vistoria = {
+          local_id:     uuid(),
+          unidade_id:   unidadeId,
+          unidade_nome: cl.unidade_nome || nomeParam,
+          empresa_nome: cl.empresa_nome || empresaParam,
+          status:       'rascunho',
+          created_at:   new Date().toISOString(),
+          updated_at:   new Date().toISOString(),
+          areas: cl.areas.map(a => ({
+            area_id:   a.area_id,
+            area_nome: a.area_nome,
+            itens: a.itens.map(i => ({
+              area_item_id: i.area_item_id,
+              item_id:      i.item_id,
+              descricao:    i.descricao,
+              situacao:     null,
+              observacao:   '',
+              foto1:        null,
+              foto2:        null
+            }))
+          }))
+        };
+        await db.salvarVistoria(vistoria);
+      }
+
+      document.getElementById('h-titulo').textContent = vistoria.unidade_nome;
+      document.getElementById('h-sub').textContent    = vistoria.empresa_nome || '';
+      renderTudo();
+    }
+
+    // ── Render completo ───────────────────────────────────────
+    function renderTudo() {
+      const div = document.getElementById('checklist');
+      if (!vistoria.areas?.length) {
+        div.innerHTML = '<div class="empty"><span>📋</span>Nenhuma área configurada.</div>';
+        return;
+      }
+      div.innerHTML = vistoria.areas.map((area, ai) =>
+        renderArea(area, ai)
+      ).join('');
+      atualizarProgresso();
+    }
+
+    function renderArea(area, ai) {
+      const preench = area.itens.filter(i => i.situacao).length;
+      const total   = area.itens.length;
+      return `
+        <div class="area-section" id="area-sec-${ai}">
+          <div class="area-header" id="area-hdr-${ai}" onclick="toggleArea(${ai})">
+            <h3>${area.area_nome}</h3>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="count" id="area-cnt-${ai}">${preench}/${total}</span>
+              <span class="arrow" id="area-arr-${ai}">▾</span>
+            </div>
+          </div>
+          <div class="area-body" id="area-body-${ai}">
+            ${area.itens.map((item, ii) => renderItem(ai, ii, item)).join('')}
+          </div>
+        </div>`;
+    }
+
+    function renderItem(ai, ii, item) {
+      return `
+        <div class="item-check" id="item-${ai}-${ii}">
+          <div class="item-desc">${item.descricao}</div>
+          <div class="status-row">
+            <button class="btn-status ok ${item.situacao === 'ok' ? 'ativo' : ''}"
+              data-status="ok" onclick="setSituacao(${ai},${ii},'ok')">✅ OK</button>
+            <button class="btn-status atencao ${item.situacao === 'atencao' ? 'ativo' : ''}"
+              data-status="atencao" onclick="setSituacao(${ai},${ii},'atencao')">⚠️ Atenção</button>
+            <button class="btn-status critico ${item.situacao === 'critico' ? 'ativo' : ''}"
+              data-status="critico" onclick="setSituacao(${ai},${ii},'critico')">🚨 Crítico</button>
+          </div>
+          <textarea class="obs-input" rows="2"
+            placeholder="Observação / recomendação (opcional)..."
+            onchange="setObservacao(${ai},${ii},this.value)">${item.observacao || ''}</textarea>
+          <div class="foto-row">
+            ${renderFotoSlot(ai, ii, 1, item.foto1)}
+            ${renderFotoSlot(ai, ii, 2, item.foto2)}
+          </div>
+        </div>`;
+    }
+
+    function renderFotoSlot(ai, ii, slot, dataUrl) {
+      if (dataUrl) {
+        return `
+          <div class="foto-slot" id="foto-${ai}-${ii}-${slot}">
+            <img src="${dataUrl}" alt="Foto ${slot}" onclick="verFoto('${dataUrl}')" />
+            <button class="foto-del" onclick="removerFoto(${ai},${ii},${slot})">✕</button>
+          </div>`;
+      }
+      return `
+        <div class="foto-slot" id="foto-${ai}-${ii}-${slot}"
+          onclick="tirarFoto(${ai},${ii},${slot})"
+          style="flex-direction:column">
+          <div class="ph">📷</div>
+          <div class="ph-txt">Foto ${slot}</div>
+        </div>`;
+    }
+
+    // ── Interações ────────────────────────────────────────────
+    window.toggleArea = (ai) => {
+      const body = document.getElementById(`area-body-${ai}`);
+      const hdr  = document.getElementById(`area-hdr-${ai}`);
+      const arr  = document.getElementById(`area-arr-${ai}`);
+      const open = body.classList.toggle('open');
+      hdr.classList.toggle('open', open);
+      arr.textContent = open ? '▴' : '▾';
+    };
+
+    window.setSituacao = async (ai, ii, situacao) => {
+      vistoria.areas[ai].itens[ii].situacao = situacao;
+      // Atualiza apenas os botões (sem re-render)
+      const itemEl = document.getElementById(`item-${ai}-${ii}`);
+      itemEl?.querySelectorAll('.btn-status').forEach(btn => {
+        btn.classList.toggle('ativo', btn.dataset.status === situacao);
+      });
+      atualizarContadorArea(ai);
+      atualizarProgresso();
+      await autoSalvar();
+    };
+
+    window.setObservacao = async (ai, ii, valor) => {
+      vistoria.areas[ai].itens[ii].observacao = valor;
+      await autoSalvar();
+    };
+
+    // Foto
+    window.tirarFoto = (ai, ii, slot) => {
+      fotoAlvo = { ai, ii, slot };
+      const inp = document.getElementById('file-input');
+      inp.value = '';
+      inp.click();
+    };
+
+    window.onFotoCapturada = () => {
+      const file = document.getElementById('file-input').files[0];
+      if (!file || !fotoAlvo) return;
+
+      // Comprime para max 1200px antes de salvar
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = async () => {
+        const MAX = 1200;
+        let w = img.width, h = img.height;
+        if (w > MAX || h > MAX) {
+          if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+          else       { w = Math.round(w * MAX / h); h = MAX; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        const dataURL = canvas.toDataURL('image/jpeg', 0.8);
+        URL.revokeObjectURL(url);
+
+        const { ai, ii, slot } = fotoAlvo;
+        if (slot === 1) vistoria.areas[ai].itens[ii].foto1 = dataURL;
+        else            vistoria.areas[ai].itens[ii].foto2 = dataURL;
+        await autoSalvar();
+
+        // Substitui o slot na tela
+        const slotEl = document.getElementById(`foto-${ai}-${ii}-${slot}`);
+        if (slotEl) slotEl.outerHTML = renderFotoSlot(ai, ii, slot, dataURL);
+        fotoAlvo = null;
+      };
+      img.src = url;
+    };
+
+    window.removerFoto = async (ai, ii, slot) => {
+      if (!confirm('Remover esta foto?')) return;
+      if (slot === 1) vistoria.areas[ai].itens[ii].foto1 = null;
+      else            vistoria.areas[ai].itens[ii].foto2 = null;
+      await autoSalvar();
+      const slotEl = document.getElementById(`foto-${ai}-${ii}-${slot}`);
+      if (slotEl) slotEl.outerHTML = renderFotoSlot(ai, ii, slot, null);
+    };
+
+    window.verFoto = (dataUrl) => {
+      const w = window.open('', '_blank');
+      w.document.write(`<body style="margin:0;background:#000"><img src="${dataUrl}" style="max-width:100%;max-height:100vh;display:block;margin:auto"></body>`);
+    };
+
+    // ── Progresso ─────────────────────────────────────────────
+    function atualizarContadorArea(ai) {
+      const area  = vistoria.areas[ai];
+      const cnt   = document.getElementById(`area-cnt-${ai}`);
+      if (cnt) cnt.textContent = `${area.itens.filter(i => i.situacao).length}/${area.itens.length}`;
+    }
+
+    function atualizarProgresso() {
+      const total   = vistoria.areas.reduce((s, a) => s + a.itens.length, 0);
+      const preench = vistoria.areas.reduce((s, a) => s + a.itens.filter(i => i.situacao).length, 0);
+      const pct = total ? Math.round(preench / total * 100) : 0;
+      document.getElementById('prog-fill').style.width = pct + '%';
+      document.getElementById('prog-txt').textContent  = `${preench} de ${total} itens preenchidos (${pct}%)`;
+    }
+
+    // ── Persistência ──────────────────────────────────────────
+    async function autoSalvar() {
+      vistoria.updated_at = new Date().toISOString();
+      await db.salvarVistoria(vistoria);
+    }
+
+    window.salvarRascunho = async () => {
+      vistoria.status = 'rascunho';
+      await autoSalvar();
+      const btn = document.getElementById('btn-salvar-topo');
+      const orig = btn.textContent;
+      btn.textContent = '✓ Salvo';
+      setTimeout(() => { btn.textContent = orig; }, 1500);
+    };
+
+    window.finalizarVistoria = async () => {
+      const total   = vistoria.areas.reduce((s, a) => s + a.itens.length, 0);
+      const preench = vistoria.areas.reduce((s, a) => s + a.itens.filter(i => i.situacao).length, 0);
+
+      if (preench === 0) {
+        alert('Avalie pelo menos um item antes de finalizar.');
+        return;
+      }
+      if (preench < total) {
+        const ok = confirm(`${total - preench} item(ns) ainda sem avaliação.\nDeseja finalizar assim mesmo?`);
+        if (!ok) return;
+      }
+
+      vistoria.status = 'pronto';
+      await autoSalvar();
+      alert('✅ Vistoria finalizada!\nEla ficará salva aqui até você sincronizar com a internet.');
+      window.location.replace('/app/home.html');
+    };
+
+    // Abre a primeira área automaticamente
+    function abrirPrimeiraArea() {
+      const body = document.getElementById('area-body-0');
+      const hdr  = document.getElementById('area-hdr-0');
+      const arr  = document.getElementById('area-arr-0');
+      if (body) { body.classList.add('open'); hdr?.classList.add('open'); if (arr) arr.textContent = '▴'; }
+    }
+
+    init().then(abrirPrimeiraArea);
+  </script>
+
+</body>
+</html>
