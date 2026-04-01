@@ -9,6 +9,68 @@
   <title>Vistoria</title>
   <link rel="manifest" href="/manifest.json" />
   <link rel="stylesheet" href="/app/app.css" />
+  <style>
+    /* ── Occurrence blocks ───────────────────────── */
+    .ocorrencia-block {
+      background: #f8f9fb;
+      border: 1px solid #e8eaf0;
+      border-left: 3px solid #90a4ae;
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 10px;
+    }
+    .ocorrencia-block:first-of-type {
+      margin-top: 8px;
+    }
+    .oc-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .oc-num {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      color: #90a4ae;
+    }
+    .btn-remove-oc {
+      background: none;
+      border: none;
+      color: #ccc;
+      font-size: 14px;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 4px;
+      line-height: 1;
+    }
+    .btn-remove-oc:active { background: #fee; color: #d32f2f; }
+
+    .rec-field { display: none; margin-top: 8px; }
+    .rec-field.visivel { display: block; }
+    .rec-input {
+      border-color: #ff9800 !important;
+      background: #fff8f0 !important;
+    }
+    .rec-input::placeholder { color: #e65100; opacity: .7; }
+
+    .btn-add-oc {
+      display: block;
+      width: 100%;
+      margin-top: 10px;
+      padding: 8px;
+      background: none;
+      border: 1.5px dashed #90caf9;
+      color: #1565c0;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+    }
+    .btn-add-oc:active { background: #e3f2fd; }
+  </style>
 </head>
 <body>
 
@@ -54,20 +116,51 @@
 
     if (!isLoggedIn()) { window.location.replace('/app/index.html'); }
 
-    const params     = new URLSearchParams(location.search);
-    const localId    = params.get('local_id');
-    const unidadeId  = params.get('unidade_id');
-    const nomeParam  = params.get('nome')    || '';
+    const params      = new URLSearchParams(location.search);
+    const localId     = params.get('local_id');
+    const unidadeId   = params.get('unidade_id');
+    const nomeParam   = params.get('nome')    || '';
     const empresaParam = params.get('empresa') || '';
 
     let vistoria = null;
-    let fotoAlvo = null; // { ai, ii, slot }
+    let fotoAlvo = null; // { ai, ii, oi, slot }
 
-    // ── Inicialização ─────────────────────────────────────────
+    function novaOcorrencia() {
+      return { local_id: uuid(), situacao: null, descricao: '', recomendacao: '', foto1: null, foto2: null };
+    }
+
+    // ── Migração de formato antigo ────────────────
+    function migrarFormatoAntigo(vis) {
+      let migrou = false;
+      for (const area of vis.areas || []) {
+        for (const item of area.itens || []) {
+          if (!item.ocorrencias) {
+            item.ocorrencias = [{
+              local_id:     uuid(),
+              situacao:     item.situacao     || null,
+              descricao:    item.observacao   || '',
+              recomendacao: '',
+              foto1:        item.foto1        || null,
+              foto2:        item.foto2        || null
+            }];
+            delete item.situacao;
+            delete item.observacao;
+            delete item.foto1;
+            delete item.foto2;
+            migrou = true;
+          }
+        }
+      }
+      return migrou;
+    }
+
+    // ── Inicialização ─────────────────────────────
     async function init() {
       if (localId) {
         vistoria = await db.getVistoria(localId);
         if (!vistoria) { alert('Rascunho não encontrado.'); history.back(); return; }
+        // Migra formato antigo (se necessário)
+        if (migrarFormatoAntigo(vistoria)) await db.salvarVistoria(vistoria);
       } else {
         const cl = await db.getChecklist(unidadeId);
         if (!cl) {
@@ -93,10 +186,7 @@
               area_item_id: i.area_item_id,
               item_id:      i.item_id,
               descricao:    i.descricao,
-              situacao:     null,
-              observacao:   '',
-              foto1:        null,
-              foto2:        null
+              ocorrencias:  [novaOcorrencia()]
             }))
           }))
         };
@@ -108,21 +198,19 @@
       renderTudo();
     }
 
-    // ── Render completo ───────────────────────────────────────
+    // ── Render completo ───────────────────────────
     function renderTudo() {
       const div = document.getElementById('checklist');
       if (!vistoria.areas?.length) {
         div.innerHTML = '<div class="empty"><span>📋</span>Nenhuma área configurada.</div>';
         return;
       }
-      div.innerHTML = vistoria.areas.map((area, ai) =>
-        renderArea(area, ai)
-      ).join('');
+      div.innerHTML = vistoria.areas.map((area, ai) => renderArea(area, ai)).join('');
       atualizarProgresso();
     }
 
     function renderArea(area, ai) {
-      const preench = area.itens.filter(i => i.situacao).length;
+      const preench = area.itens.filter(itemPreenchido).length;
       const total   = area.itens.length;
       return `
         <div class="area-section" id="area-sec-${ai}">
@@ -143,42 +231,65 @@
       return `
         <div class="item-check" id="item-${ai}-${ii}">
           <div class="item-desc">${item.descricao}</div>
+          <div id="ocs-${ai}-${ii}">
+            ${item.ocorrencias.map((oc, oi) => renderOcorrencia(ai, ii, oi, oc, item.ocorrencias.length)).join('')}
+          </div>
+          <button class="btn-add-oc" onclick="adicionarOcorrencia(${ai},${ii})">+ Adicionar ocorrência</button>
+        </div>`;
+    }
+
+    function renderOcorrencia(ai, ii, oi, oc, totalOcs) {
+      const podRemover = totalOcs > 1;
+      const recVisivel = ['atencao','critico'].includes(oc.situacao);
+      return `
+        <div class="ocorrencia-block" id="oc-block-${ai}-${ii}-${oi}">
+          <div class="oc-header">
+            <span class="oc-num">Ocorrência ${oi + 1}</span>
+            ${podRemover
+              ? `<button class="btn-remove-oc" onclick="removerOcorrencia(${ai},${ii},${oi})" title="Remover ocorrência">✕</button>`
+              : ''}
+          </div>
           <div class="status-row">
-            <button class="btn-status ok ${item.situacao === 'ok' ? 'ativo' : ''}"
-              data-status="ok" onclick="setSituacao(${ai},${ii},'ok')">✅ OK</button>
-            <button class="btn-status atencao ${item.situacao === 'atencao' ? 'ativo' : ''}"
-              data-status="atencao" onclick="setSituacao(${ai},${ii},'atencao')">⚠️ Atenção</button>
-            <button class="btn-status critico ${item.situacao === 'critico' ? 'ativo' : ''}"
-              data-status="critico" onclick="setSituacao(${ai},${ii},'critico')">🚨 Crítico</button>
+            <button class="btn-status ok ${oc.situacao === 'ok' ? 'ativo' : ''}"
+              data-status="ok" onclick="setSituacao(${ai},${ii},${oi},'ok')">✅ OK</button>
+            <button class="btn-status atencao ${oc.situacao === 'atencao' ? 'ativo' : ''}"
+              data-status="atencao" onclick="setSituacao(${ai},${ii},${oi},'atencao')">⚠️ Atenção</button>
+            <button class="btn-status critico ${oc.situacao === 'critico' ? 'ativo' : ''}"
+              data-status="critico" onclick="setSituacao(${ai},${ii},${oi},'critico')">🚨 Crítico</button>
           </div>
           <textarea class="obs-input" rows="2"
-            placeholder="Observação / recomendação (opcional)..."
-            onchange="setObservacao(${ai},${ii},this.value)">${item.observacao || ''}</textarea>
+            placeholder="Descreva o que foi encontrado..."
+            onchange="setDescricao(${ai},${ii},${oi},this.value)">${oc.descricao || ''}</textarea>
+          <div class="rec-field ${recVisivel ? 'visivel' : ''}" id="rec-${ai}-${ii}-${oi}">
+            <textarea class="obs-input rec-input" rows="2"
+              placeholder="💡 Recomendação: o que deve ser feito para corrigir..."
+              onchange="setRecomendacao(${ai},${ii},${oi},this.value)">${oc.recomendacao || ''}</textarea>
+          </div>
           <div class="foto-row">
-            ${renderFotoSlot(ai, ii, 1, item.foto1)}
-            ${renderFotoSlot(ai, ii, 2, item.foto2)}
+            ${renderFotoSlot(ai, ii, oi, 1, oc.foto1)}
+            ${renderFotoSlot(ai, ii, oi, 2, oc.foto2)}
           </div>
         </div>`;
     }
 
-    function renderFotoSlot(ai, ii, slot, dataUrl) {
+    function renderFotoSlot(ai, ii, oi, slot, dataUrl) {
       if (dataUrl) {
         return `
-          <div class="foto-slot" id="foto-${ai}-${ii}-${slot}">
+          <div class="foto-slot" id="foto-${ai}-${ii}-${oi}-${slot}">
             <img src="${dataUrl}" alt="Foto ${slot}" onclick="verFoto('${dataUrl}')" />
-            <button class="foto-del" onclick="removerFoto(${ai},${ii},${slot})">✕</button>
+            <button class="foto-del" onclick="removerFoto(${ai},${ii},${oi},${slot})">✕</button>
           </div>`;
       }
       return `
-        <div class="foto-slot" id="foto-${ai}-${ii}-${slot}"
-          onclick="tirarFoto(${ai},${ii},${slot})"
+        <div class="foto-slot" id="foto-${ai}-${ii}-${oi}-${slot}"
+          onclick="tirarFoto(${ai},${ii},${oi},${slot})"
           style="flex-direction:column">
           <div class="ph">📷</div>
           <div class="ph-txt">Foto ${slot}</div>
         </div>`;
     }
 
-    // ── Interações ────────────────────────────────────────────
+    // ── Interações ────────────────────────────────
     window.toggleArea = (ai) => {
       const body = document.getElementById(`area-body-${ai}`);
       const hdr  = document.getElementById(`area-hdr-${ai}`);
@@ -188,26 +299,55 @@
       arr.textContent = open ? '▴' : '▾';
     };
 
-    window.setSituacao = async (ai, ii, situacao) => {
-      vistoria.areas[ai].itens[ii].situacao = situacao;
-      // Atualiza apenas os botões (sem re-render)
-      const itemEl = document.getElementById(`item-${ai}-${ii}`);
-      itemEl?.querySelectorAll('.btn-status').forEach(btn => {
+    window.setSituacao = async (ai, ii, oi, situacao) => {
+      vistoria.areas[ai].itens[ii].ocorrencias[oi].situacao = situacao;
+      // Atualiza botões sem re-render
+      const block = document.getElementById(`oc-block-${ai}-${ii}-${oi}`);
+      block?.querySelectorAll('.btn-status').forEach(btn => {
         btn.classList.toggle('ativo', btn.dataset.status === situacao);
       });
+      // Mostra/esconde campo de recomendação
+      const rec = document.getElementById(`rec-${ai}-${ii}-${oi}`);
+      if (rec) rec.classList.toggle('visivel', ['atencao','critico'].includes(situacao));
       atualizarContadorArea(ai);
       atualizarProgresso();
       await autoSalvar();
     };
 
-    window.setObservacao = async (ai, ii, valor) => {
-      vistoria.areas[ai].itens[ii].observacao = valor;
+    window.setDescricao = async (ai, ii, oi, valor) => {
+      vistoria.areas[ai].itens[ii].ocorrencias[oi].descricao = valor;
       await autoSalvar();
     };
 
+    window.setRecomendacao = async (ai, ii, oi, valor) => {
+      vistoria.areas[ai].itens[ii].ocorrencias[oi].recomendacao = valor;
+      await autoSalvar();
+    };
+
+    window.adicionarOcorrencia = async (ai, ii) => {
+      const item = vistoria.areas[ai].itens[ii];
+      item.ocorrencias.push(novaOcorrencia());
+      await autoSalvar();
+      // Re-render só as ocorrências deste item
+      document.getElementById(`ocs-${ai}-${ii}`).innerHTML =
+        item.ocorrencias.map((oc, oi) => renderOcorrencia(ai, ii, oi, oc, item.ocorrencias.length)).join('');
+    };
+
+    window.removerOcorrencia = async (ai, ii, oi) => {
+      const item = vistoria.areas[ai].itens[ii];
+      if (item.ocorrencias.length <= 1) return;
+      if (!confirm('Remover esta ocorrência?')) return;
+      item.ocorrencias.splice(oi, 1);
+      await autoSalvar();
+      document.getElementById(`ocs-${ai}-${ii}`).innerHTML =
+        item.ocorrencias.map((oc, oi2) => renderOcorrencia(ai, ii, oi2, oc, item.ocorrencias.length)).join('');
+      atualizarContadorArea(ai);
+      atualizarProgresso();
+    };
+
     // Foto
-    window.tirarFoto = (ai, ii, slot) => {
-      fotoAlvo = { ai, ii, slot };
+    window.tirarFoto = (ai, ii, oi, slot) => {
+      fotoAlvo = { ai, ii, oi, slot };
       const inp = document.getElementById('file-input');
       inp.value = '';
       inp.click();
@@ -217,7 +357,6 @@
       const file = document.getElementById('file-input').files[0];
       if (!file || !fotoAlvo) return;
 
-      // Comprime para max 1200px antes de salvar
       const img = new Image();
       const url = URL.createObjectURL(file);
       img.onload = async () => {
@@ -233,26 +372,27 @@
         const dataURL = canvas.toDataURL('image/jpeg', 0.8);
         URL.revokeObjectURL(url);
 
-        const { ai, ii, slot } = fotoAlvo;
-        if (slot === 1) vistoria.areas[ai].itens[ii].foto1 = dataURL;
-        else            vistoria.areas[ai].itens[ii].foto2 = dataURL;
+        const { ai, ii, oi, slot } = fotoAlvo;
+        const oc = vistoria.areas[ai].itens[ii].ocorrencias[oi];
+        if (slot === 1) oc.foto1 = dataURL;
+        else            oc.foto2 = dataURL;
         await autoSalvar();
 
-        // Substitui o slot na tela
-        const slotEl = document.getElementById(`foto-${ai}-${ii}-${slot}`);
-        if (slotEl) slotEl.outerHTML = renderFotoSlot(ai, ii, slot, dataURL);
+        const slotEl = document.getElementById(`foto-${ai}-${ii}-${oi}-${slot}`);
+        if (slotEl) slotEl.outerHTML = renderFotoSlot(ai, ii, oi, slot, dataURL);
         fotoAlvo = null;
       };
       img.src = url;
     };
 
-    window.removerFoto = async (ai, ii, slot) => {
+    window.removerFoto = async (ai, ii, oi, slot) => {
       if (!confirm('Remover esta foto?')) return;
-      if (slot === 1) vistoria.areas[ai].itens[ii].foto1 = null;
-      else            vistoria.areas[ai].itens[ii].foto2 = null;
+      const oc = vistoria.areas[ai].itens[ii].ocorrencias[oi];
+      if (slot === 1) oc.foto1 = null;
+      else            oc.foto2 = null;
       await autoSalvar();
-      const slotEl = document.getElementById(`foto-${ai}-${ii}-${slot}`);
-      if (slotEl) slotEl.outerHTML = renderFotoSlot(ai, ii, slot, null);
+      const slotEl = document.getElementById(`foto-${ai}-${ii}-${oi}-${slot}`);
+      if (slotEl) slotEl.outerHTML = renderFotoSlot(ai, ii, oi, slot, null);
     };
 
     window.verFoto = (dataUrl) => {
@@ -260,22 +400,26 @@
       w.document.write(`<body style="margin:0;background:#000"><img src="${dataUrl}" style="max-width:100%;max-height:100vh;display:block;margin:auto"></body>`);
     };
 
-    // ── Progresso ─────────────────────────────────────────────
+    // ── Progresso ─────────────────────────────────
+    function itemPreenchido(item) {
+      return item.ocorrencias?.some(oc => oc.situacao !== null) ?? false;
+    }
+
     function atualizarContadorArea(ai) {
-      const area  = vistoria.areas[ai];
-      const cnt   = document.getElementById(`area-cnt-${ai}`);
-      if (cnt) cnt.textContent = `${area.itens.filter(i => i.situacao).length}/${area.itens.length}`;
+      const area = vistoria.areas[ai];
+      const cnt  = document.getElementById(`area-cnt-${ai}`);
+      if (cnt) cnt.textContent = `${area.itens.filter(itemPreenchido).length}/${area.itens.length}`;
     }
 
     function atualizarProgresso() {
       const total   = vistoria.areas.reduce((s, a) => s + a.itens.length, 0);
-      const preench = vistoria.areas.reduce((s, a) => s + a.itens.filter(i => i.situacao).length, 0);
+      const preench = vistoria.areas.reduce((s, a) => s + a.itens.filter(itemPreenchido).length, 0);
       const pct = total ? Math.round(preench / total * 100) : 0;
       document.getElementById('prog-fill').style.width = pct + '%';
       document.getElementById('prog-txt').textContent  = `${preench} de ${total} itens preenchidos (${pct}%)`;
     }
 
-    // ── Persistência ──────────────────────────────────────────
+    // ── Persistência ──────────────────────────────
     async function autoSalvar() {
       vistoria.updated_at = new Date().toISOString();
       await db.salvarVistoria(vistoria);
@@ -295,7 +439,7 @@
 
     window.finalizarVistoria = async () => {
       const total   = vistoria.areas.reduce((s, a) => s + a.itens.length, 0);
-      const preench = vistoria.areas.reduce((s, a) => s + a.itens.filter(i => i.situacao).length, 0);
+      const preench = vistoria.areas.reduce((s, a) => s + a.itens.filter(itemPreenchido).length, 0);
 
       if (preench === 0) {
         alert('Avalie pelo menos um item antes de finalizar.');
@@ -312,7 +456,6 @@
       window.location.replace('/app/home.html');
     };
 
-    // Abre a primeira área automaticamente
     function abrirPrimeiraArea() {
       const body = document.getElementById('area-body-0');
       const hdr  = document.getElementById('area-hdr-0');

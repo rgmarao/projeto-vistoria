@@ -249,38 +249,42 @@
       if (!rVis.ok) throw new Error(dVis.error || 'Erro ao criar vistoria');
       const visId = dVis.vistoria?.id || dVis.data?.id;
 
-      // 2. Cria ocorrências
+      // 2. Cria ocorrências (uma por ocorrência de cada item avaliado)
       for (const area of v.areas || []) {
         for (const item of area.itens || []) {
-          if (!item.situacao) continue; // não avaliado → pula
+          for (const oc of item.ocorrencias || []) {
+            if (!oc.situacao) continue; // não avaliado → pula
 
-          const rOc = await fetch(`/api/vistorias/${visId}/ocorrencias`, {
-            method: 'POST', headers,
-            body: JSON.stringify({
-              descricao:    item.descricao,
-              status:       item.situacao,
-              origem:       'app',
-              recomendacao: item.observacao || null
-            })
-          });
-          const dOc = await rOc.json();
-          if (!rOc.ok) continue;
-          const ocId = dOc.data?.id || dOc.ocorrencia?.id;
+            const rOc = await fetch(`/api/vistorias/${visId}/ocorrencias`, {
+              method: 'POST', headers,
+              body: JSON.stringify({
+                area_id:      area.area_id  || null,
+                item_id:      item.item_id  || null,
+                descricao:    oc.descricao  || item.descricao,
+                status:       oc.situacao,
+                origem:       'app',
+                recomendacao: oc.recomendacao || null
+              })
+            });
+            const dOc = await rOc.json();
+            if (!rOc.ok) continue;
+            const ocId = dOc.data?.id || dOc.ocorrencia?.id;
 
-          // 3. Upload das fotos
-          for (const slot of [1, 2]) {
-            const fotoData = slot === 1 ? item.foto1 : item.foto2;
-            if (!fotoData || !ocId) continue;
-            try {
-              const fd = new FormData();
-              fd.append('foto', dataURLtoBlob(fotoData), `foto_slot${slot}.jpg`);
-              fd.append('slot', String(slot));
-              await fetch(`/api/ocorrencias/${ocId}/fotos`, {
-                method: 'POST',
-                headers: { Authorization: 'Bearer ' + token },
-                body: fd
-              });
-            } catch { /* foto falhou — não bloqueia */ }
+            // 3. Upload das fotos
+            for (const slot of [1, 2]) {
+              const fotoData = slot === 1 ? oc.foto1 : oc.foto2;
+              if (!fotoData || !ocId) continue;
+              try {
+                const fd = new FormData();
+                fd.append('foto', dataURLtoBlob(fotoData), `foto_slot${slot}.jpg`);
+                fd.append('slot', String(slot));
+                await fetch(`/api/ocorrencias/${ocId}/fotos`, {
+                  method: 'POST',
+                  headers: { Authorization: 'Bearer ' + token },
+                  body: fd
+                });
+              } catch { /* foto falhou — não bloqueia */ }
+            }
           }
         }
       }
