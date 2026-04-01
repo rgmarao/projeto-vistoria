@@ -1,4 +1,4 @@
-run = "bash pull-from-github.sh && node index.js"
+run = "bash pull-from-github.sh && node --watch index.js"
 modules = ["nodejs-20"]
 
 [nix]
