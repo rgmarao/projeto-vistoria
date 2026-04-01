@@ -19,6 +19,9 @@
     </div>
     <div style="display:flex;align-items:center;gap:12px">
       <span id="conn-badge" title="Status de conexão"></span>
+      <button onclick="limparCache()"
+        style="background:none;border:none;color:rgba(255,255,255,.6);font-size:13px;cursor:pointer;padding:2px 6px;border:1px solid rgba(255,255,255,.3);border-radius:6px"
+        title="Limpar dados locais">🗑 Cache</button>
       <button onclick="logout()"
         style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;padding:0"
         title="Sair">⏻</button>
@@ -290,6 +293,17 @@
       if (!confirm('Sair do aplicativo?')) return;
       clearSession();
       window.location.replace('/app/index.html');
+    };
+
+    window.limparCache = async () => {
+      const rascunhos = (await db.listarVistorias()).filter(v => v.status !== 'sincronizado');
+      const aviso = rascunhos.length
+        ? `⚠️ Atenção: você tem ${rascunhos.length} vistoria(s) não enviada(s). Elas serão perdidas.\n\nDeseja limpar mesmo assim?`
+        : 'Limpar checklists em cache? (vistorias pendentes não serão afetadas)';
+      if (!confirm(aviso)) return;
+      const db2 = indexedDB.deleteDatabase('VistoriaDB');
+      db2.onsuccess = () => { alert('Cache limpo. O app será recarregado.'); location.reload(); };
+      db2.onerror  = () => alert('Erro ao limpar cache.');
     };
 
     function esc(s) { return String(s).replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
