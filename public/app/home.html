@@ -218,23 +218,26 @@
 
       const todos   = await db.listarVistorias();
       const prontos = todos.filter(v => v.status === 'pronto');
-      let ok = 0, erros = 0;
+      let ok = 0;
+      const errosMsgs = [];
 
       for (const v of prontos) {
         try {
           await enviarVistoria(v);
           ok++;
         } catch (err) {
-          erros++;
+          errosMsgs.push(`• ${v.unidade_nome}: ${err.message}`);
           console.error('[sync]', v.local_id, err.message);
         }
       }
 
       btn.disabled    = false;
       btn.textContent = 'Sincronizar';
-      alert(erros > 0
-        ? `${ok} enviada(s) com sucesso, ${erros} com erro. Verifique o console.`
-        : `✅ ${ok} vistoria(s) enviada(s) com sucesso!`);
+      if (errosMsgs.length > 0) {
+        alert(`${ok} enviada(s) com sucesso.\n\nErro(s):\n${errosMsgs.join('\n')}`);
+      } else {
+        alert(`✅ ${ok} vistoria(s) enviada(s) com sucesso!`);
+      }
       carregarRascunhos();
     };
 
