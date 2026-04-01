@@ -1,4 +1,4 @@
-const CACHE = 'vistoria-v2026-04-01';
+const CACHE = 'vistoria-v2026-04-02';
 
 const APP_SHELL = [
   '/app/index.html',

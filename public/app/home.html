@@ -169,8 +169,10 @@
       div.innerHTML = ativos
         .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
         .map(v => {
-          const totalItens = v.areas?.reduce((s, a) => s + a.itens.length, 0) || 0;
-          const preench    = v.areas?.reduce((s, a) => s + a.itens.filter(i => i.situacao).length, 0) || 0;
+          const totalItens = v.areas?.reduce((s, a) => s + (a.itens?.length || 0), 0) || 0;
+          const preench    = v.areas?.reduce((s, a) => s + (a.itens?.filter(i =>
+            i.ocorrencias?.some(oc => oc.situacao !== null) ?? false
+          ).length || 0), 0) || 0;
           const label      = v.status === 'pronto' ? '✅ Pronto para envio' : `✏️ ${preench}/${totalItens} itens`;
           return `
             <div class="draft-card ${v.status === 'pronto' ? 'pronto' : ''}">
@@ -240,14 +242,19 @@
       const token   = getToken();
       const headers = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token };
 
-      // 1. Cria vistoria no servidor
-      const rVis = await fetch('/api/vistorias', {
-        method: 'POST', headers,
-        body: JSON.stringify({ unidade_id: v.unidade_id })
-      });
-      const dVis = await rVis.json();
-      if (!rVis.ok) throw new Error(dVis.error || 'Erro ao criar vistoria');
-      const visId = dVis.vistoria?.id || dVis.data?.id;
+      // 1. Cria vistoria no servidor (pula se já foi enviada antes)
+      let visId = v.server_id || null;
+      if (!visId) {
+        const rVis = await fetch('/api/vistorias', {
+          method: 'POST', headers,
+          body: JSON.stringify({ unidade_id: v.unidade_id })
+        });
+        const dVis = await rVis.json();
+        if (!rVis.ok) throw new Error(dVis.error || 'Erro ao criar vistoria');
+        visId = dVis.vistoria?.id || dVis.data?.id;
+        // Salva server_id imediatamente para evitar duplicação em caso de retentativa
+        await db.salvarVistoria({ ...v, server_id: visId });
+      }
 
       // 2. Cria ocorrências (uma por ocorrência de cada item avaliado)
       for (const area of v.areas || []) {
@@ -305,7 +312,7 @@
         ? `⚠️ Atenção: você tem ${rascunhos.length} vistoria(s) não enviada(s). Elas serão perdidas.\n\nDeseja limpar mesmo assim?`
         : 'Limpar checklists em cache? (vistorias pendentes não serão afetadas)';
       if (!confirm(aviso)) return;
-      const db2 = indexedDB.deleteDatabase('VistoriaDB');
+      const db2 = indexedDB.deleteDatabase('vistoria-offline');
       db2.onsuccess = () => { alert('Cache limpo. O app será recarregado.'); location.reload(); };
       db2.onerror  = () => alert('Erro ao limpar cache.');
     };
