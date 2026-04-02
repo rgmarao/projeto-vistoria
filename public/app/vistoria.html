@@ -240,7 +240,7 @@
 
     function renderOcorrencia(ai, ii, oi, oc, totalOcs) {
       const podRemover = totalOcs > 1;
-      const recVisivel = oc.situacao === 'atencao';
+      const recVisivel = ['atencao','critico'].includes(oc.situacao);
       return `
         <div class="ocorrencia-block" id="oc-block-${ai}-${ii}-${oi}">
           <div class="oc-header">
@@ -310,9 +310,9 @@
       block?.querySelectorAll('.btn-status').forEach(btn => {
         btn.classList.toggle('ativo', btn.dataset.status === situacao);
       });
-      // Mostra/esconde campo de recomendação (somente atenção)
+      // Mostra/esconde campo de recomendação (atenção e crítico)
       const rec = document.getElementById(`rec-${ai}-${ii}-${oi}`);
-      if (rec) rec.classList.toggle('visivel', situacao === 'atencao');
+      if (rec) rec.classList.toggle('visivel', ['atencao','critico'].includes(situacao));
       atualizarContadorArea(ai);
       atualizarProgresso();
       await autoSalvar();
