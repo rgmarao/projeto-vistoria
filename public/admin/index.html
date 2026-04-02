@@ -4,144 +4,123 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Admin — Dashboard · VistorIA</title>
-  <link rel="stylesheet" href="/css/style.css" />
-  <style>
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 16px;
-      margin-bottom: 28px;
-    }
-    .stat-card {
-      background: #fff;
-      border-radius: 10px;
-      padding: 22px 24px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.07);
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
-    .stat-icon {
-      font-size: 32px;
-      line-height: 1;
-    }
-    .stat-info h3 {
-      font-size: 28px;
-      font-weight: 700;
-      color: #1565c0;
-      line-height: 1;
-    }
-    .stat-info p {
-      font-size: 13px;
-      color: #888;
-      margin-top: 4px;
-    }
-    .quick-links {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 16px;
-    }
-    .quick-link {
-      background: #fff;
-      border-radius: 10px;
-      padding: 20px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.07);
-      text-align: center;
-      cursor: pointer;
-      transition: transform .15s, box-shadow .15s;
-      display: block;
-    }
-    .quick-link:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 16px rgba(0,0,0,0.12);
-    }
-    .quick-link .icon { font-size: 28px; margin-bottom: 8px; }
-    .quick-link h4 { font-size: 15px; color: #333; margin-bottom: 4px; }
-    .quick-link p  { font-size: 12px; color: #999; }
-  </style>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/css/tabler.min.css" />
 </head>
-<body>
+<body class="antialiased">
 
-  <nav class="navbar">
-    <span class="navbar-brand">🏗️ Vistoria Online</span>
-    <div class="navbar-nav">
-      <a href="/admin/index.html" class="active">Dashboard</a>
-      <a href="/admin/empresas.html">Empresas</a>
-      <a href="/admin/unidades.html">Unidades</a>
-      <a href="/admin/itens.html">Itens</a>
-      <a href="/admin/usuarios.html">Usuários</a>
-      <a href="#" onclick="logout()">Sair</a>
-    </div>
-    <span class="navbar-user" id="navbar-user"></span>
-  </nav>
-
-  <div class="container main-content">
-
-    <div class="section-header">
-      <h2>Dashboard</h2>
-    </div>
-
-    <!-- Cards de resumo -->
-    <div class="stats-grid" id="stats-grid">
-      <div class="stat-card">
-        <div class="stat-icon">🏢</div>
-        <div class="stat-info">
-          <h3 id="count-empresas">—</h3>
-          <p>Empresas ativas</p>
-        </div>
+  <header class="navbar navbar-expand-md d-print-none">
+    <div class="container-xl">
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar-menu">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <a href="/admin/index.html" class="navbar-brand">
+        <img src="/img/logo-vistoria.png" alt="VistorIA" height="32" class="navbar-brand-image me-2" />
+      </a>
+      <div class="navbar-nav flex-row order-md-last gap-2 align-items-center">
+        <span class="d-none d-md-block text-muted fs-5" id="navbar-user"></span>
+        <a href="#" class="btn btn-ghost-secondary btn-icon" onclick="logout()" title="Sair">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M14 8v-2a2 2 0 0 0 -2 -2h-7a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2 -2v-2"/><path d="M9 12h12l-3 -3m0 6l3 -3"/></svg>
+        </a>
       </div>
-      <div class="stat-card">
-        <div class="stat-icon">🏗️</div>
-        <div class="stat-info">
-          <h3 id="count-vistorias">—</h3>
-          <p>Vistorias em andamento</p>
-        </div>
+      <div class="collapse navbar-collapse" id="navbar-menu">
+        <ul class="navbar-nav">
+          <li class="nav-item active"><a href="/admin/index.html" class="nav-link"><span class="nav-link-title">Dashboard</span></a></li>
+          <li class="nav-item"><a href="/admin/empresas.html" class="nav-link"><span class="nav-link-title">Empresas</span></a></li>
+          <li class="nav-item"><a href="/admin/unidades.html" class="nav-link"><span class="nav-link-title">Unidades</span></a></li>
+          <li class="nav-item"><a href="/admin/itens.html" class="nav-link"><span class="nav-link-title">Itens</span></a></li>
+          <li class="nav-item"><a href="/admin/usuarios.html" class="nav-link"><span class="nav-link-title">Usuários</span></a></li>
+        </ul>
       </div>
-      <div class="stat-card">
-        <div class="stat-icon">👤</div>
-        <div class="stat-info">
-          <h3 id="count-usuarios">—</h3>
-          <p>Usuários cadastrados</p>
+    </div>
+  </header>
+
+  <div class="page-wrapper">
+    <div class="page-header d-print-none">
+      <div class="container-xl">
+        <div class="row g-2 align-items-center">
+          <div class="col">
+            <div class="page-pretitle">Administração</div>
+            <h2 class="page-title">Dashboard</h2>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- Links rápidos -->
-    <div class="section-header">
-      <h2>Acesso rápido</h2>
-    </div>
+    <div class="page-body">
+      <div class="container-xl">
 
-    <div class="quick-links">
-      <a class="quick-link" href="/admin/empresas.html">
-        <div class="icon">🏢</div>
-        <h4>Empresas</h4>
-        <p>Gerenciar empresas e unidades</p>
-      </a>
-      <a class="quick-link" href="/admin/usuarios.html">
-        <div class="icon">👥</div>
-        <h4>Usuários</h4>
-        <p>Perfis, roles e vínculos</p>
-      </a>
-      <a class="quick-link" href="/analista/vistorias.html">
-        <div class="icon">📋</div>
-        <h4>Vistorias</h4>
-        <p>Acompanhar todas as vistorias</p>
-      </a>
-    </div>
+        <!-- Stats -->
+        <div class="row row-deck row-cards mb-3">
+          <div class="col-sm-4">
+            <div class="card">
+              <div class="card-body">
+                <div class="subheader">Empresas ativas</div>
+                <div class="h1 mb-0" id="count-empresas">—</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-4">
+            <div class="card">
+              <div class="card-body">
+                <div class="subheader">Vistorias em andamento</div>
+                <div class="h1 mb-0" id="count-vistorias">—</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-4">
+            <div class="card">
+              <div class="card-body">
+                <div class="subheader">Usuários cadastrados</div>
+                <div class="h1 mb-0" id="count-usuarios">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
 
+        <!-- Acesso rápido -->
+        <div class="row row-cards">
+          <div class="col-sm-4">
+            <a href="/admin/empresas.html" class="card card-link">
+              <div class="card-body text-center py-4">
+                <div class="mb-2" style="font-size:2rem">🏢</div>
+                <div class="fw-bold">Empresas</div>
+                <div class="text-muted small">Gerenciar empresas e unidades</div>
+              </div>
+            </a>
+          </div>
+          <div class="col-sm-4">
+            <a href="/admin/usuarios.html" class="card card-link">
+              <div class="card-body text-center py-4">
+                <div class="mb-2" style="font-size:2rem">👥</div>
+                <div class="fw-bold">Usuários</div>
+                <div class="text-muted small">Perfis, roles e vínculos</div>
+              </div>
+            </a>
+          </div>
+          <div class="col-sm-4">
+            <a href="/analista/vistorias.html" class="card card-link">
+              <div class="card-body text-center py-4">
+                <div class="mb-2" style="font-size:2rem">📋</div>
+                <div class="fw-bold">Vistorias</div>
+                <div class="text-muted small">Acompanhar todas as vistorias</div>
+              </div>
+            </a>
+          </div>
+        </div>
+
+      </div>
+    </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/js/tabler.min.js"></script>
   <script type="module">
     import { requireLogin, requireRole, getUser, auth } from '/js/api.js';
     import { empresas, vistorias, perfis } from '/js/api.js';
 
     requireLogin();
     requireRole('admin');
+    document.getElementById('navbar-user').textContent = getUser()?.nome || '';
 
-    const user = getUser();
-    document.getElementById('navbar-user').textContent = user?.nome || user?.email || '';
-
-    // Carrega contadores
     async function carregarStats() {
       try {
         const [resEmpresas, resVistorias, resPerfis] = await Promise.all([
@@ -152,17 +131,11 @@
         document.getElementById('count-empresas').textContent  = resEmpresas.data?.length  ?? '—';
         document.getElementById('count-vistorias').textContent = resVistorias.data?.length ?? '—';
         document.getElementById('count-usuarios').textContent  = resPerfis.data?.length    ?? '—';
-      } catch (err) {
-        console.error('Erro ao carregar stats:', err.message);
-      }
+      } catch (err) { console.error(err.message); }
     }
 
+    window.logout = async () => { await auth.logout(); window.location.href = '/index.html'; };
     carregarStats();
-
-    window.logout = async () => {
-      await auth.logout();
-      window.location.href = '/index.html';
-    };
   </script>
 
 </body>
