@@ -6,3 +6,4 @@ dist
 *.tar.gz
 npm-debug.log*
 *.log
+*.bak
