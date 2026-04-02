@@ -216,7 +216,7 @@ body {
 .status-row { display: flex; gap: 6px; padding: 12px; }
 .btn-status {
   flex: 1;
-  padding: 10px 4px;
+  padding: 10px 2px;
   border: 2px solid var(--border);
   border-radius: 10px;
   background: var(--surface);
@@ -226,6 +226,8 @@ body {
   text-align: center;
   transition: all .15s;
   color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
 }
 .btn-status.ok       { border-color: #a5d6a7; color: var(--ok); }
 .btn-status.ok.ativo { background: var(--ok); border-color: var(--ok); color: #fff; }
@@ -235,12 +237,24 @@ body {
 .btn-status.critico.ativo { background: var(--critico); border-color: var(--critico); color: #fff; }
 .btn-status:active { transform: scale(.96); }
 
+/* Labels e grupos de campo */
+.field-group { padding: 0 12px 10px; }
+.field-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  margin-bottom: 5px;
+}
+
 /* Campo recomendação (condicional) */
-.rec-field        { display: none; padding: 0 12px 12px; }
+.rec-field        { display: none; padding: 0 12px 10px; }
 .rec-field.visivel { display: block; }
 
-/* Textarea (observação / descrição / recomendação) */
-.obs-input, .rec-input {
+/* Textarea */
+.obs-input {
   width: 100%;
   padding: 10px 12px;
   border: 1.5px solid var(--border);
@@ -253,9 +267,7 @@ body {
   background: var(--surface);
   transition: border-color .15s;
 }
-.obs-input:focus, .rec-input:focus { border-color: var(--brand-cta); }
-.rec-input { border-color: #ffb74d; }
-.rec-input:focus { border-color: var(--atencao); }
+.obs-input:focus { border-color: var(--brand-cta); }
 
 /* ── Slots de foto ───────────────────────────────────────────── */
 .foto-row  { display: flex; gap: 10px; padding: 0 12px 12px; }

@@ -240,7 +240,7 @@
 
     function renderOcorrencia(ai, ii, oi, oc, totalOcs) {
       const podRemover = totalOcs > 1;
-      const recVisivel = ['atencao','critico'].includes(oc.situacao);
+      const recVisivel = oc.situacao === 'atencao';
       return `
         <div class="ocorrencia-block" id="oc-block-${ai}-${ii}-${oi}">
           <div class="oc-header">
@@ -253,16 +253,20 @@
             <button class="btn-status ok ${oc.situacao === 'ok' ? 'ativo' : ''}"
               data-status="ok" onclick="setSituacao(${ai},${ii},${oi},'ok')">✅ OK</button>
             <button class="btn-status atencao ${oc.situacao === 'atencao' ? 'ativo' : ''}"
-              data-status="atencao" onclick="setSituacao(${ai},${ii},${oi},'atencao')">⚠️ Atenção</button>
+              data-status="atencao" onclick="setSituacao(${ai},${ii},${oi},'atencao')">⚠️&nbsp;Atenção</button>
             <button class="btn-status critico ${oc.situacao === 'critico' ? 'ativo' : ''}"
               data-status="critico" onclick="setSituacao(${ai},${ii},${oi},'critico')">🚨 Crítico</button>
           </div>
-          <textarea class="obs-input" rows="2"
-            placeholder="Descreva o que foi encontrado..."
-            onchange="setDescricao(${ai},${ii},${oi},this.value)">${oc.descricao || ''}</textarea>
+          <div class="field-group">
+            <span class="field-label">Descrição</span>
+            <textarea class="obs-input" rows="2"
+              placeholder="Descreva o que foi encontrado..."
+              onchange="setDescricao(${ai},${ii},${oi},this.value)">${oc.descricao || ''}</textarea>
+          </div>
           <div class="rec-field ${recVisivel ? 'visivel' : ''}" id="rec-${ai}-${ii}-${oi}">
-            <textarea class="obs-input rec-input" rows="2"
-              placeholder="💡 Recomendação: o que deve ser feito para corrigir..."
+            <span class="field-label">Recomendação</span>
+            <textarea class="obs-input" rows="2"
+              placeholder="O que deve ser feito para corrigir..."
               onchange="setRecomendacao(${ai},${ii},${oi},this.value)">${oc.recomendacao || ''}</textarea>
           </div>
           <div class="foto-row">
@@ -306,9 +310,9 @@
       block?.querySelectorAll('.btn-status').forEach(btn => {
         btn.classList.toggle('ativo', btn.dataset.status === situacao);
       });
-      // Mostra/esconde campo de recomendação
+      // Mostra/esconde campo de recomendação (somente atenção)
       const rec = document.getElementById(`rec-${ai}-${ii}-${oi}`);
-      if (rec) rec.classList.toggle('visivel', ['atencao','critico'].includes(situacao));
+      if (rec) rec.classList.toggle('visivel', situacao === 'atencao');
       atualizarContadorArea(ai);
       atualizarProgresso();
       await autoSalvar();
