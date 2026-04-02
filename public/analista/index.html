@@ -4,118 +4,143 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Analista — Dashboard</title>
-  <link rel="stylesheet" href="/css/style.css" />
-  <style>
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 16px;
-      margin-bottom: 28px;
-    }
-    .stat-card {
-      background: #fff;
-      border-radius: 10px;
-      padding: 20px 22px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.07);
-      display: flex;
-      align-items: center;
-      gap: 14px;
-    }
-    .stat-icon { font-size: 30px; }
-    .stat-info h3 { font-size: 26px; font-weight: 700; color: #1565c0; }
-    .stat-info p  { font-size: 13px; color: #888; margin-top: 3px; }
-
-    .vistoria-card {
-      background: #fff;
-      border-radius: 10px;
-      padding: 18px 20px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.07);
-      margin-bottom: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-    }
-    .vistoria-info h4 { font-size: 15px; color: #333; margin-bottom: 4px; }
-    .vistoria-info p  { font-size: 13px; color: #888; }
-    .vistoria-acoes   { display: flex; gap: 8px; flex-shrink: 0; }
-  </style>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/css/tabler.min.css" />
 </head>
-<body>
+<body class="antialiased">
 
-  <nav class="navbar">
-    <span class="navbar-brand">🏗️ Vistoria Online</span>
-    <div class="navbar-nav">
-      <a href="/analista/index.html" class="active">Dashboard</a>
-      <a href="/analista/vistorias.html">Vistorias</a>
-      <a href="#" onclick="logout()">Sair</a>
-    </div>
-    <span class="navbar-user" id="navbar-user"></span>
-  </nav>
-
-  <div class="container main-content">
-
-    <div class="section-header">
-      <h2>Dashboard</h2>
-      <button class="btn btn-primary btn-sm" onclick="abrirModalNovaVistoria()">+ Nova Vistoria</button>
-    </div>
-
-    <!-- Stats -->
-    <div class="stats-grid">
-      <div class="stat-card">
-        <div class="stat-icon">🟡</div>
-        <div class="stat-info">
-          <h3 id="count-andamento">—</h3>
-          <p>Em andamento</p>
-        </div>
+  <header class="navbar navbar-expand-md d-print-none">
+    <div class="container-xl">
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar-menu">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <a href="/analista/index.html" class="navbar-brand">
+        <span class="navbar-brand-text fw-bold">🏗️ Vistoria Online</span>
+      </a>
+      <div class="navbar-nav flex-row order-md-last gap-2 align-items-center">
+        <span class="d-none d-md-block text-muted fs-5" id="navbar-user"></span>
+        <a href="#" class="btn btn-ghost-secondary btn-icon" onclick="logout()" title="Sair">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M14 8v-2a2 2 0 0 0 -2 -2h-7a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2 -2v-2"/><path d="M9 12h12l-3 -3m0 6l3 -3"/></svg>
+        </a>
       </div>
-      <div class="stat-card">
-        <div class="stat-icon">🔵</div>
-        <div class="stat-info">
-          <h3 id="count-finalizadas">—</h3>
-          <p>Finalizadas</p>
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon">🟢</div>
-        <div class="stat-info">
-          <h3 id="count-publicadas">—</h3>
-          <p>Publicadas</p>
-        </div>
+      <div class="collapse navbar-collapse" id="navbar-menu">
+        <ul class="navbar-nav">
+          <li class="nav-item active"><a href="/analista/index.html" class="nav-link"><span class="nav-link-title">Dashboard</span></a></li>
+          <li class="nav-item"><a href="/analista/vistorias.html" class="nav-link"><span class="nav-link-title">Vistorias</span></a></li>
+        </ul>
       </div>
     </div>
+  </header>
 
-    <!-- Vistorias em andamento -->
-    <div class="section-header">
-      <h2>Em andamento</h2>
-      <a href="/analista/vistorias.html" style="font-size:13px;color:#1976d2">Ver todas →</a>
+  <div class="page-wrapper">
+    <div class="page-header d-print-none">
+      <div class="container-xl">
+        <div class="row g-2 align-items-center">
+          <div class="col">
+            <div class="page-pretitle">Analista</div>
+            <h2 class="page-title">Dashboard</h2>
+          </div>
+          <div class="col-auto ms-auto d-print-none">
+            <button class="btn btn-primary" onclick="abrirModalNovaVistoria()">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Nova Vistoria
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div id="lista-andamento">
-      <p style="color:#999;font-size:14px">Carregando...</p>
-    </div>
+    <div class="page-body">
+      <div class="container-xl">
 
+        <!-- Stats -->
+        <div class="row row-deck row-cards mb-3">
+          <div class="col-sm-4">
+            <div class="card">
+              <div class="card-body">
+                <div class="d-flex align-items-center">
+                  <div class="subheader">Em andamento</div>
+                </div>
+                <div class="h1 mb-0" id="count-andamento">—</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-4">
+            <div class="card">
+              <div class="card-body">
+                <div class="d-flex align-items-center">
+                  <div class="subheader">Finalizadas</div>
+                </div>
+                <div class="h1 mb-0" id="count-finalizadas">—</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-4">
+            <div class="card">
+              <div class="card-body">
+                <div class="d-flex align-items-center">
+                  <div class="subheader">Publicadas</div>
+                </div>
+                <div class="h1 mb-0" id="count-publicadas">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Em andamento -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Em andamento</h3>
+            <div class="card-options">
+              <a href="/analista/vistorias.html" class="btn btn-sm btn-ghost-secondary">Ver todas →</a>
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-vcenter table-hover card-table">
+              <thead>
+                <tr>
+                  <th>Unidade</th>
+                  <th>Empresa</th>
+                  <th>Data</th>
+                  <th class="w-1">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="lista-andamento">
+                <tr><td colspan="4" class="text-center text-muted py-4">
+                  <div class="spinner-border spinner-border-sm me-2" role="status"></div>Carregando...
+                </td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </div>
   </div>
 
   <!-- Modal Nova Vistoria -->
-  <div class="modal-overlay" id="modal-nova">
-    <div class="modal">
-      <div class="modal-header">
-        <h3>Nova Vistoria</h3>
-        <button class="modal-close" onclick="fecharModal()">✕</button>
-      </div>
-      <div class="alert alert-error" id="nova-erro"></div>
-      <div class="form-group">
-        <label>Unidade *</label>
-        <select id="nova-unidade"></select>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-neutral btn-sm" onclick="fecharModal()">Cancelar</button>
-        <button class="btn btn-primary btn-sm" id="btn-nova" onclick="criarVistoria()">Criar</button>
+  <div class="modal modal-blur fade" id="modal-nova" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-sm modal-dialog-centered" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Nova Vistoria</h5>
+          <button type="button" class="btn-close" onclick="fecharModal()"></button>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-danger d-none" id="nova-erro"></div>
+          <div class="mb-2">
+            <label class="form-label required">Unidade</label>
+            <select id="nova-unidade" class="form-select"></select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-link link-secondary me-auto" onclick="fecharModal()">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="btn-nova" onclick="criarVistoria()">Criar</button>
+        </div>
       </div>
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/js/tabler.min.js"></script>
   <script type="module">
     import { requireLogin, getUser, auth, vistorias, perfis } from '/js/api.js';
 
@@ -124,7 +149,9 @@
     const user = getUser();
     document.getElementById('navbar-user').textContent = user?.nome || '';
 
-    // ── Stats ─────────────────────────────────────
+    const getModal = () => window.bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-nova'));
+
+    // ── Stats ───────────────────────────────────────
     async function carregarStats() {
       try {
         const [r1, r2, r3] = await Promise.all([
@@ -138,58 +165,55 @@
       } catch (err) { console.error(err.message); }
     }
 
-    // ── Lista em andamento ────────────────────────
+    // ── Lista em andamento ──────────────────────────
     async function carregarAndamento() {
-      const lista = document.getElementById('lista-andamento');
+      const tbody = document.getElementById('lista-andamento');
       try {
         const res = await vistorias.listar({ status: 'em_andamento' });
         if (!res.data?.length) {
-          lista.innerHTML = '<p style="color:#999;font-size:14px">Nenhuma vistoria em andamento.</p>';
+          tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">Nenhuma vistoria em andamento.</td></tr>';
           return;
         }
-        lista.innerHTML = res.data.slice(0, 5).map(v => `
-          <div class="vistoria-card">
-            <div class="vistoria-info">
-              <h4>${v.unidades?.nome || 'Unidade'}</h4>
-              <p>${v.unidades?.empresas?.nome || ''} · ${new Date(v.data_criacao).toLocaleDateString('pt-BR')}</p>
-            </div>
-            <div class="vistoria-acoes">
-              <a href="/analista/vistoria.html?id=${v.id}" class="btn btn-primary btn-sm">Abrir</a>
-            </div>
-          </div>`).join('');
+        tbody.innerHTML = res.data.slice(0, 5).map(v => `
+          <tr>
+            <td class="fw-medium">${v.unidades?.nome || '—'}</td>
+            <td class="text-muted">${v.unidades?.empresas?.nome || '—'}</td>
+            <td class="text-muted">${new Date(v.data_criacao).toLocaleDateString('pt-BR')}</td>
+            <td>
+              <a href="/analista/vistoria.html?id=${v.id}" class="btn btn-sm btn-primary">Abrir</a>
+            </td>
+          </tr>`).join('');
       } catch (err) {
-        lista.innerHTML = `<p style="color:#c62828;font-size:14px">${err.message}</p>`;
+        tbody.innerHTML = `<tr><td colspan="4" class="text-danger text-center">${err.message}</td></tr>`;
       }
     }
 
-    // ── Modal Nova Vistoria ───────────────────────
-    let minhasUnidades = [];
-
+    // ── Modal Nova Vistoria ─────────────────────────
     window.abrirModalNovaVistoria = async () => {
-      document.getElementById('nova-erro').classList.remove('show');
-      document.getElementById('modal-nova').classList.add('show');
+      document.getElementById('nova-erro').classList.add('d-none');
       const sel = document.getElementById('nova-unidade');
       sel.innerHTML = '<option>Carregando...</option>';
+      getModal().show();
       try {
         const res = await perfis.unidades(user.id);
-        minhasUnidades = res.data || [];
-        if (!minhasUnidades.length) {
+        const lista = res.data || [];
+        if (!lista.length) {
           sel.innerHTML = '<option>Nenhuma unidade vinculada ao seu perfil</option>';
           return;
         }
-        sel.innerHTML = minhasUnidades.map(v => `<option value="${v.unidade_id}">${v.unidades?.nome || v.unidade_id}</option>`).join('');
-      } catch (err) {
+        sel.innerHTML = lista.map(v => `<option value="${v.unidade_id}">${v.unidades?.nome || v.unidade_id}</option>`).join('');
+      } catch {
         sel.innerHTML = '<option>Erro ao carregar unidades</option>';
       }
     };
 
-    window.fecharModal = () => document.getElementById('modal-nova').classList.remove('show');
+    window.fecharModal = () => getModal().hide();
 
     window.criarVistoria = async () => {
       const unidade_id = document.getElementById('nova-unidade').value;
       const erro = document.getElementById('nova-erro');
       const btn  = document.getElementById('btn-nova');
-      erro.classList.remove('show');
+      erro.classList.add('d-none');
       btn.disabled = true;
       try {
         const res = await vistorias.criar({ unidade_id, criado_por: user.id });
@@ -198,7 +222,7 @@
         window.location.href = `/analista/vistoria.html?id=${id}`;
       } catch (err) {
         erro.textContent = err.message;
-        erro.classList.add('show');
+        erro.classList.remove('d-none');
         btn.disabled = false;
       }
     };

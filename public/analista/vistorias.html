@@ -4,62 +4,97 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Analista — Vistorias</title>
-  <link rel="stylesheet" href="/css/style.css" />
-  <style>
-    .filtros { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
-    .filtros select { width: auto; min-width: 160px; }
-  </style>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/css/tabler.min.css" />
 </head>
-<body>
+<body class="antialiased">
 
-  <nav class="navbar">
-    <span class="navbar-brand">🏗️ Vistoria Online</span>
-    <div class="navbar-nav">
-      <a href="/analista/index.html">Dashboard</a>
-      <a href="/analista/vistorias.html" class="active">Vistorias</a>
-      <a href="#" onclick="logout()">Sair</a>
+  <header class="navbar navbar-expand-md d-print-none">
+    <div class="container-xl">
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar-menu">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <a href="/analista/index.html" class="navbar-brand">
+        <span class="navbar-brand-text fw-bold">🏗️ Vistoria Online</span>
+      </a>
+      <div class="navbar-nav flex-row order-md-last gap-2 align-items-center">
+        <span class="d-none d-md-block text-muted fs-5" id="navbar-user"></span>
+        <a href="#" class="btn btn-ghost-secondary btn-icon" onclick="logout()" title="Sair">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M14 8v-2a2 2 0 0 0 -2 -2h-7a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2 -2v-2"/><path d="M9 12h12l-3 -3m0 6l3 -3"/></svg>
+        </a>
+      </div>
+      <div class="collapse navbar-collapse" id="navbar-menu">
+        <ul class="navbar-nav">
+          <li class="nav-item"><a href="/analista/index.html" class="nav-link"><span class="nav-link-title">Dashboard</span></a></li>
+          <li class="nav-item active"><a href="/analista/vistorias.html" class="nav-link"><span class="nav-link-title">Vistorias</span></a></li>
+        </ul>
+      </div>
     </div>
-    <span class="navbar-user" id="navbar-user"></span>
-  </nav>
+  </header>
 
-  <div class="container main-content">
-
-    <div class="section-header">
-      <h2>Vistorias</h2>
-      <button class="btn btn-primary btn-sm" onclick="window.location.href='/analista/index.html'">+ Nova</button>
-    </div>
-
-    <!-- Filtros -->
-    <div class="filtros">
-      <select id="filtro-status" onchange="carregar()">
-        <option value="">Todos os status</option>
-        <option value="em_andamento">Em andamento</option>
-        <option value="finalizada">Finalizada</option>
-        <option value="publicada">Publicada</option>
-      </select>
-    </div>
-
-    <div class="card">
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Unidade</th>
-              <th>Empresa</th>
-              <th>Status</th>
-              <th>Data</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody id="tabela-vistorias">
-            <tr><td colspan="5" style="text-align:center;color:#999">Carregando...</td></tr>
-          </tbody>
-        </table>
+  <div class="page-wrapper">
+    <div class="page-header d-print-none">
+      <div class="container-xl">
+        <div class="row g-2 align-items-center">
+          <div class="col">
+            <div class="page-pretitle">Analista</div>
+            <h2 class="page-title">Vistorias</h2>
+          </div>
+          <div class="col-auto ms-auto d-print-none">
+            <a href="/analista/index.html" class="btn btn-primary">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Nova Vistoria
+            </a>
+          </div>
+        </div>
       </div>
     </div>
 
+    <div class="page-body">
+      <div class="container-xl">
+
+        <!-- Filtro -->
+        <div class="card mb-3">
+          <div class="card-body">
+            <div class="row g-2">
+              <div class="col-md-4">
+                <select id="filtro-status" class="form-select" onchange="carregar()">
+                  <option value="">Todos os status</option>
+                  <option value="em_andamento">Em andamento</option>
+                  <option value="finalizada">Finalizada</option>
+                  <option value="publicada">Publicada</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabela -->
+        <div class="card">
+          <div class="table-responsive">
+            <table class="table table-vcenter table-hover card-table">
+              <thead>
+                <tr>
+                  <th>Unidade</th>
+                  <th>Empresa</th>
+                  <th class="w-1">Status</th>
+                  <th class="d-none d-md-table-cell">Data</th>
+                  <th class="w-1">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="tabela-vistorias">
+                <tr><td colspan="5" class="text-center text-muted py-4">
+                  <div class="spinner-border spinner-border-sm me-2" role="status"></div>Carregando...
+                </td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/js/tabler.min.js"></script>
   <script type="module">
     import { requireLogin, getUser, auth, vistorias } from '/js/api.js';
 
@@ -67,53 +102,49 @@
     document.getElementById('navbar-user').textContent = getUser()?.nome || '';
 
     const statusBadge = {
-      em_andamento: '<span class="badge badge-orange">Em andamento</span>',
-      finalizada:   '<span class="badge badge-blue">Finalizada</span>',
-      publicada:    '<span class="badge badge-green">Publicada</span>'
+      em_andamento: '<span class="badge bg-warning-lt text-warning">Em andamento</span>',
+      finalizada:   '<span class="badge bg-blue-lt text-blue">Finalizada</span>',
+      publicada:    '<span class="badge bg-success-lt text-success">Publicada</span>'
     };
 
     window.carregar = async () => {
       const tbody  = document.getElementById('tabela-vistorias');
       const status = document.getElementById('filtro-status').value;
-      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#999">Carregando...</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm me-2" role="status"></div>Carregando...</td></tr>';
       try {
         const params = status ? { status } : {};
         const res = await vistorias.listar(params);
         if (!res.data?.length) {
-          tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#999">Nenhuma vistoria encontrada.</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">Nenhuma vistoria encontrada.</td></tr>';
           return;
         }
         tbody.innerHTML = res.data.map(v => `
           <tr>
-            <td>${v.unidades?.nome || '—'}</td>
-            <td>${v.unidades?.empresas?.nome || '—'}</td>
+            <td class="fw-medium">${v.unidades?.nome || '—'}</td>
+            <td class="text-muted">${v.unidades?.empresas?.nome || '—'}</td>
             <td>${statusBadge[v.status] || v.status}</td>
-            <td>${new Date(v.data_criacao).toLocaleDateString('pt-BR')}</td>
-            <td class="actions">
-              <a href="/analista/vistoria.html?id=${v.id}" class="btn btn-primary btn-sm">Abrir</a>
-              ${v.status === 'em_andamento' ? `<button class="btn btn-warning btn-sm" onclick="finalizar('${v.id}')">Finalizar</button>` : ''}
-              ${v.status === 'finalizada'   ? `<button class="btn btn-success btn-sm" onclick="publicar('${v.id}')">Publicar</button>`  : ''}
+            <td class="text-muted d-none d-md-table-cell">${new Date(v.data_criacao).toLocaleDateString('pt-BR')}</td>
+            <td class="text-nowrap">
+              <a href="/analista/vistoria.html?id=${v.id}" class="btn btn-sm btn-primary">Abrir</a>
+              ${v.status === 'em_andamento' ? `<button class="btn btn-sm btn-ghost-warning" onclick="finalizar('${v.id}')">Finalizar</button>` : ''}
+              ${v.status === 'finalizada'   ? `<button class="btn btn-sm btn-ghost-success" onclick="publicar('${v.id}')">Publicar</button>`  : ''}
             </td>
           </tr>`).join('');
       } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="5" style="color:#c62828">${err.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="text-danger text-center">${err.message}</td></tr>`;
       }
     };
 
     window.finalizar = async (id) => {
       if (!confirm('Finalizar esta vistoria? Ela não poderá mais ser editada.')) return;
-      try {
-        await vistorias.finalizar(id);
-        carregar();
-      } catch (err) { alert(err.message); }
+      try { await vistorias.finalizar(id); carregar(); }
+      catch (err) { alert(err.message); }
     };
 
     window.publicar = async (id) => {
       if (!confirm('Publicar esta vistoria? Ela ficará visível para os usuários da unidade.')) return;
-      try {
-        await vistorias.publicar(id);
-        carregar();
-      } catch (err) { alert(err.message); }
+      try { await vistorias.publicar(id); carregar(); }
+      catch (err) { alert(err.message); }
     };
 
     window.logout = async () => { await auth.logout(); window.location.href = '/index.html'; };

@@ -4,32 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Vistoria — Detalhe</title>
-  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/css/tabler.min.css" />
   <style>
-    /* ── Vistoria header ─────────────────────────── */
-    .vis-header {
-      background: #fff;
-      border-radius: 10px;
-      padding: 20px 24px;
-      box-shadow: 0 2px 8px rgba(0,0,0,.07);
-      margin-bottom: 20px;
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 12px;
-    }
-    .vis-header h2  { font-size: 18px; color: #1565c0; margin-bottom: 4px; }
-    .vis-header p   { font-size: 13px; color: #888; }
-    .vis-acoes      { display: flex; gap: 8px; flex-wrap: wrap; }
-
     /* ── Área section ────────────────────────────── */
     .area-section {
-      background: #fff;
-      border-radius: 10px;
-      box-shadow: 0 2px 8px rgba(0,0,0,.07);
-      margin-bottom: 14px;
+      border-radius: 8px;
       overflow: hidden;
+      margin-bottom: 12px;
+      border: 1px solid var(--tblr-border-color);
     }
     .area-hdr {
       padding: 14px 20px;
@@ -37,20 +19,20 @@
       align-items: center;
       justify-content: space-between;
       cursor: pointer;
-      background: #f5f7fa;
-      border-bottom: 1px solid #e8eaf0;
+      background: var(--tblr-bg-surface-secondary);
+      border-bottom: 1px solid var(--tblr-border-color);
       user-select: none;
     }
-    .area-hdr h3      { font-size: 15px; color: #333; }
-    .area-hdr .count  { font-size: 12px; color: #aaa; }
-    .area-hdr .arrow  { font-size: 12px; color: #aaa; margin-left: 8px; }
-    .area-body        { display: none; }
-    .area-body.open   { display: block; }
+    .area-hdr h3     { font-size: 15px; font-weight: 600; margin: 0; }
+    .area-hdr .count { font-size: 12px; color: #aaa; }
+    .area-hdr .arrow { font-size: 12px; color: #aaa; margin-left: 8px; }
+    .area-body       { display: none; background: #fff; }
+    .area-body.open  { display: block; }
 
     /* ── Item row ────────────────────────────────── */
     .item-row {
       padding: 14px 20px;
-      border-bottom: 1px solid #f0f2f5;
+      border-bottom: 1px solid var(--tblr-border-color-light, #f0f2f5);
     }
     .item-row:last-child { border-bottom: none; }
     .item-title {
@@ -62,23 +44,18 @@
 
     /* ── Occurrence card ─────────────────────────── */
     .oc-card {
-      border: 1px solid #e8eaf0;
+      border: 1px solid var(--tblr-border-color);
       border-left: 4px solid #ccc;
-      border-radius: 8px;
+      border-radius: 6px;
       padding: 12px 14px;
       margin-bottom: 8px;
-      background: #fafafa;
+      background: var(--tblr-bg-surface-secondary);
     }
     .oc-card.ok      { border-left-color: #388e3c; background: #f1f8f2; }
     .oc-card.atencao { border-left-color: #f57c00; background: #fffaf0; }
     .oc-card.critico { border-left-color: #d32f2f; background: #fff5f5; }
 
-    .oc-top {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 10px;
-    }
+    .oc-top  { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
     .oc-num  { font-size: 11px; color: #aaa; margin-bottom: 3px; font-weight: 700; text-transform: uppercase; }
     .oc-desc { font-size: 14px; color: #333; }
     .oc-rec  { font-size: 13px; color: #e65100; margin-top: 5px; }
@@ -86,129 +63,132 @@
 
     .fotos-row { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
     .foto-slot {
-      width: 110px;
-      height: 90px;
+      width: 110px; height: 90px;
       border: 2px dashed #ddd;
       border-radius: 6px;
       overflow: hidden;
       position: relative;
       cursor: pointer;
       background: #f5f5f5;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
-      color: #bbb;
-      font-size: 12px;
-      gap: 4px;
+      display: flex; align-items: center; justify-content: center; flex-direction: column;
+      color: #bbb; font-size: 12px; gap: 4px;
     }
     .foto-slot img { width: 100%; height: 100%; object-fit: cover; }
     .foto-slot span { font-size: 22px; }
     .foto-del {
-      position: absolute;
-      top: 3px;
-      right: 3px;
-      background: rgba(0,0,0,.5);
-      color: #fff;
-      border: none;
-      border-radius: 50%;
-      width: 20px;
-      height: 20px;
-      font-size: 11px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      position: absolute; top: 3px; right: 3px;
+      background: rgba(0,0,0,.5); color: #fff; border: none;
+      border-radius: 50%; width: 20px; height: 20px;
+      font-size: 11px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
     }
 
     .btn-add-oc {
-      margin-top: 8px;
-      padding: 6px 12px;
-      background: none;
-      border: 1.5px dashed #90caf9;
-      color: #1565c0;
-      border-radius: 6px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
+      margin-top: 8px; padding: 6px 12px;
+      background: none; border: 1.5px dashed #90caf9; color: #1565c0;
+      border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;
     }
     .btn-add-oc:hover { background: #e3f2fd; }
     .item-sem-oc { font-size: 13px; color: #bbb; margin-bottom: 8px; font-style: italic; }
 
-    /* ── Modal rec field ─────────────────────────── */
     .rec-group { display: none; }
     .rec-group.visivel { display: block; }
     input[type="file"] { display: none; }
   </style>
 </head>
-<body>
+<body class="antialiased">
 
-  <nav class="navbar">
-    <span class="navbar-brand">🏗️ Vistoria Online</span>
-    <div class="navbar-nav">
-      <a href="/analista/index.html">Dashboard</a>
-      <a href="/analista/vistorias.html">Vistorias</a>
-      <a href="#" onclick="logout()">Sair</a>
-    </div>
-    <span class="navbar-user" id="navbar-user"></span>
-  </nav>
-
-  <div class="container main-content">
-
-    <!-- Header da vistoria -->
-    <div class="vis-header" id="vis-header">
-      <div>
-        <h2 id="h-titulo">Carregando...</h2>
-        <p id="h-sub"></p>
+  <header class="navbar navbar-expand-md d-print-none">
+    <div class="container-xl">
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar-menu">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <a href="/analista/index.html" class="navbar-brand">
+        <span class="navbar-brand-text fw-bold">🏗️ Vistoria Online</span>
+      </a>
+      <div class="navbar-nav flex-row order-md-last gap-2 align-items-center">
+        <span class="d-none d-md-block text-muted fs-5" id="navbar-user"></span>
+        <a href="#" class="btn btn-ghost-secondary btn-icon" onclick="logout()" title="Sair">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M14 8v-2a2 2 0 0 0 -2 -2h-7a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2 -2v-2"/><path d="M9 12h12l-3 -3m0 6l3 -3"/></svg>
+        </a>
       </div>
-      <div class="vis-acoes" id="vis-acoes"></div>
+      <div class="collapse navbar-collapse" id="navbar-menu">
+        <ul class="navbar-nav">
+          <li class="nav-item"><a href="/analista/index.html" class="nav-link"><span class="nav-link-title">Dashboard</span></a></li>
+          <li class="nav-item active"><a href="/analista/vistorias.html" class="nav-link"><span class="nav-link-title">Vistorias</span></a></li>
+        </ul>
+      </div>
+    </div>
+  </header>
+
+  <div class="page-wrapper">
+    <div class="page-header d-print-none" id="page-header">
+      <div class="container-xl">
+        <div class="row g-2 align-items-center">
+          <div class="col">
+            <div class="page-pretitle">
+              <a href="/analista/vistorias.html" class="text-muted">← Vistorias</a>
+            </div>
+            <h2 class="page-title" id="h-titulo">Carregando...</h2>
+            <div class="page-subtitle" id="h-sub"></div>
+          </div>
+          <div class="col-auto ms-auto d-print-none" id="vis-acoes"></div>
+        </div>
+      </div>
     </div>
 
-    <!-- Checklist estruturado por área -->
-    <div id="checklist-areas"></div>
-
+    <div class="page-body">
+      <div class="container-xl">
+        <div id="checklist-areas"></div>
+      </div>
+    </div>
   </div>
 
   <!-- Input file oculto para upload de foto -->
   <input type="file" id="file-input" accept="image/*" onchange="uploadFoto()" />
 
   <!-- Modal: Nova/Editar ocorrência -->
-  <div class="modal-overlay" id="modal-oc">
-    <div class="modal" style="max-width:520px">
-      <div class="modal-header">
-        <h3 id="modal-titulo">Nova Ocorrência</h3>
-        <button class="modal-close" onclick="fecharModal()">✕</button>
-      </div>
-      <div class="alert alert-error" id="modal-erro"></div>
-      <div class="form-group">
-        <label>Descrição *</label>
-        <textarea id="oc-descricao" rows="3" placeholder="Descreva o que foi encontrado..."></textarea>
-      </div>
-      <div class="form-group">
-        <label>Status *</label>
-        <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:6px">
-          <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
-            <input type="radio" name="oc-status" value="ok" checked /> ✅ OK
-          </label>
-          <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
-            <input type="radio" name="oc-status" value="atencao" /> ⚠️ Atenção
-          </label>
-          <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
-            <input type="radio" name="oc-status" value="critico" /> 🚨 Crítico
-          </label>
+  <div class="modal modal-blur fade" id="modal-oc" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modal-titulo">Nova Ocorrência</h5>
+          <button type="button" class="btn-close" onclick="fecharModal()"></button>
         </div>
-      </div>
-      <div class="form-group rec-group" id="rec-group">
-        <label>Recomendação</label>
-        <textarea id="oc-recomendacao" rows="2" placeholder="O que deve ser feito para corrigir..."></textarea>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-neutral btn-sm" onclick="fecharModal()">Cancelar</button>
-        <button class="btn btn-primary btn-sm" id="btn-salvar" onclick="salvarOcorrencia()">Salvar</button>
+        <div class="modal-body">
+          <div class="alert alert-danger d-none" id="modal-erro"></div>
+          <div class="mb-3">
+            <label class="form-label required">Descrição</label>
+            <textarea id="oc-descricao" class="form-control" rows="3" placeholder="Descreva o que foi encontrado..."></textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label required">Status</label>
+            <div class="d-flex gap-4 flex-wrap mt-1">
+              <label class="d-flex align-items-center gap-2" style="cursor:pointer">
+                <input type="radio" name="oc-status" value="ok" checked /> ✅ OK
+              </label>
+              <label class="d-flex align-items-center gap-2" style="cursor:pointer">
+                <input type="radio" name="oc-status" value="atencao" /> ⚠️ Atenção
+              </label>
+              <label class="d-flex align-items-center gap-2" style="cursor:pointer">
+                <input type="radio" name="oc-status" value="critico" /> 🚨 Crítico
+              </label>
+            </div>
+          </div>
+          <div class="mb-2 rec-group" id="rec-group">
+            <label class="form-label">Recomendação</label>
+            <textarea id="oc-recomendacao" class="form-control" rows="2" placeholder="O que deve ser feito para corrigir..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-link link-secondary me-auto" onclick="fecharModal()">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="btn-salvar" onclick="salvarOcorrencia()">Salvar</button>
+        </div>
       </div>
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/js/tabler.min.js"></script>
   <script type="module">
     import { requireLogin, getUser, auth, vistorias, ocorrencias } from '/js/api.js';
 
@@ -225,6 +205,8 @@
     let uploadSlot   = null;
     let editavel     = false;
 
+    const getModal = () => window.bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-oc'));
+
     // Radio status → mostra/esconde campo rec
     document.querySelectorAll('input[name="oc-status"]').forEach(r => {
       r.addEventListener('change', () => {
@@ -233,7 +215,7 @@
       });
     });
 
-    // ── Carrega vistoria ──────────────────────────
+    // ── Carrega vistoria ───────────────────────────
     async function carregar() {
       try {
         const token = localStorage.getItem('token');
@@ -251,11 +233,11 @@
       }
     }
 
-    // ── Header ────────────────────────────────────
+    // ── Header ─────────────────────────────────────
     const badgeStatus = {
-      em_andamento: '<span class="badge badge-orange">Em andamento</span>',
-      finalizada:   '<span class="badge badge-blue">Finalizada</span>',
-      publicada:    '<span class="badge badge-green">Publicada</span>'
+      em_andamento: '<span class="badge bg-warning-lt text-warning">Em andamento</span>',
+      finalizada:   '<span class="badge bg-blue-lt text-blue">Finalizada</span>',
+      publicada:    '<span class="badge bg-success-lt text-success">Publicada</span>'
     };
 
     function renderHeader(vis) {
@@ -267,24 +249,24 @@
 
       const acoes = document.getElementById('vis-acoes');
       if (vis.status === 'em_andamento') {
-        acoes.innerHTML = `<button class="btn btn-warning btn-sm" onclick="finalizar()">Finalizar</button>`;
+        acoes.innerHTML = `<button class="btn btn-warning" onclick="finalizar()">Finalizar</button>`;
       } else if (vis.status === 'finalizada') {
         acoes.innerHTML = `
-          <button class="btn btn-neutral btn-sm" onclick="baixarPDF()">⬇ PDF Completo</button>
-          <button class="btn btn-danger  btn-sm" onclick="baixarPDFPendencias()">⬇ Pendências</button>
-          <button class="btn btn-success btn-sm" onclick="publicar()">Publicar</button>`;
+          <button class="btn btn-ghost-secondary" onclick="baixarPDF()">⬇ PDF Completo</button>
+          <button class="btn btn-ghost-danger" onclick="baixarPDFPendencias()">⬇ Pendências</button>
+          <button class="btn btn-success" onclick="publicar()">Publicar</button>`;
       } else if (vis.status === 'publicada') {
         acoes.innerHTML = `
-          <button class="btn btn-neutral btn-sm" onclick="baixarPDF()">⬇ PDF Completo</button>
-          <button class="btn btn-danger  btn-sm" onclick="baixarPDFPendencias()">⬇ Pendências</button>`;
+          <button class="btn btn-ghost-secondary" onclick="baixarPDF()">⬇ PDF Completo</button>
+          <button class="btn btn-ghost-danger" onclick="baixarPDFPendencias()">⬇ Pendências</button>`;
       }
     }
 
-    // ── Checklist ─────────────────────────────────
+    // ── Checklist ──────────────────────────────────
     function renderChecklist(areas) {
       const div = document.getElementById('checklist-areas');
       if (!areas?.length) {
-        div.innerHTML = '<p style="color:#aaa;text-align:center;padding:32px">Nenhuma área configurada.</p>';
+        div.innerHTML = '<div class="text-center text-muted py-5">Nenhuma área configurada.</div>';
         return;
       }
       div.innerHTML = areas.map((area, ai) => renderArea(area, ai)).join('');
@@ -340,11 +322,11 @@
             </div>
             ${editavel ? `
             <div class="oc-acoes">
-              <button class="btn btn-neutral btn-sm"
+              <button class="btn btn-sm btn-ghost-secondary"
                 onclick="abrirEdicao('${oc.id}','${esc(oc.descricao)}','${oc.status}','${esc(oc.recomendacao||'')}')">
                 Editar
               </button>
-              <button class="btn btn-danger btn-sm" onclick="deletarOc('${oc.id}')">Excluir</button>
+              <button class="btn btn-sm btn-ghost-danger" onclick="deletarOc('${oc.id}')">Excluir</button>
             </div>` : ''}
           </div>
           <div class="fotos-row">
@@ -375,7 +357,7 @@
       if (arr) arr.textContent = open ? '▴' : '▾';
     };
 
-    // ── Modal ─────────────────────────────────────
+    // ── Modal ──────────────────────────────────────
     window.abrirModal = (areaId, itemId) => {
       editandoOcId = null;
       contextoOc   = { areaId, itemId };
@@ -384,8 +366,8 @@
       document.getElementById('oc-recomendacao').value    = '';
       document.querySelector('input[name="oc-status"][value="ok"]').checked = true;
       document.getElementById('rec-group').classList.remove('visivel');
-      document.getElementById('modal-erro').classList.remove('show');
-      document.getElementById('modal-oc').classList.add('show');
+      document.getElementById('modal-erro').classList.add('d-none');
+      getModal().show();
     };
 
     window.abrirEdicao = (id, descricao, status, recomendacao) => {
@@ -397,11 +379,11 @@
       const radio = document.querySelector(`input[name="oc-status"][value="${status}"]`);
       if (radio) radio.checked = true;
       document.getElementById('rec-group').classList.toggle('visivel', ['atencao','critico'].includes(status));
-      document.getElementById('modal-erro').classList.remove('show');
-      document.getElementById('modal-oc').classList.add('show');
+      document.getElementById('modal-erro').classList.add('d-none');
+      getModal().show();
     };
 
-    window.fecharModal = () => document.getElementById('modal-oc').classList.remove('show');
+    window.fecharModal = () => getModal().hide();
 
     window.salvarOcorrencia = async () => {
       const descricao    = document.getElementById('oc-descricao').value.trim();
@@ -412,10 +394,10 @@
 
       if (!descricao) {
         erro.textContent = 'Descrição é obrigatória.';
-        erro.classList.add('show');
+        erro.classList.remove('d-none');
         return;
       }
-      erro.classList.remove('show');
+      erro.classList.add('d-none');
       btn.disabled = true;
       try {
         const body = { descricao, status, recomendacao: recomendacao || null, origem: 'web' };
@@ -430,7 +412,7 @@
         carregar();
       } catch (err) {
         erro.textContent = err.message;
-        erro.classList.add('show');
+        erro.classList.remove('d-none');
       } finally {
         btn.disabled = false;
       }
@@ -442,7 +424,7 @@
       catch (err) { alert(err.message); }
     };
 
-    // ── Upload fotos ──────────────────────────────
+    // ── Upload fotos ───────────────────────────────
     window.iniciarUpload = (ocId, slot) => { uploadOcId = ocId; uploadSlot = slot; document.getElementById('file-input').click(); };
 
     window.uploadFoto = async () => {
@@ -477,7 +459,7 @@
 
     window.verFoto = (url) => window.open(url, '_blank');
 
-    // ── Finalizar / Publicar / PDF ────────────────
+    // ── Finalizar / Publicar / PDF ─────────────────
     window.finalizar = async () => {
       if (!confirm('Finalizar esta vistoria? Não será mais possível editar ocorrências.')) return;
       try { await vistorias.finalizar(visId); carregar(); }
