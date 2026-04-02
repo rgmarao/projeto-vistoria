@@ -1,7 +1,7 @@
 {
-  "name": "Vistoria Online",
-  "short_name": "Vistoria",
-  "description": "Aplicativo de campo para vistorias",
+  "name": "VistorIA",
+  "short_name": "VistorIA",
+  "description": "Inteligência para sua inspeção",
   "start_url": "/app/index.html",
   "display": "standalone",
   "background_color": "#1565c0",

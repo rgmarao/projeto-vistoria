@@ -3,146 +3,176 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Admin — Usuários</title>
-  <link rel="stylesheet" href="/css/style.css" />
-  <style>
-    .tag {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 10px;
-      font-size: 11px;
-      font-weight: 600;
-      background: #e3f2fd;
-      color: #1565c0;
-      margin: 2px;
-    }
-  </style>
+  <title>Admin — Usuários · VistorIA</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/css/tabler.min.css" />
 </head>
-<body>
+<body class="antialiased">
 
-  <nav class="navbar">
-    <span class="navbar-brand">🏗️ Vistoria Online</span>
-    <div class="navbar-nav">
-      <a href="/admin/index.html">Dashboard</a>
-      <a href="/admin/empresas.html">Empresas</a>
-      <a href="/admin/unidades.html">Unidades</a>
-      <a href="/admin/itens.html">Itens</a>
-      <a href="/admin/usuarios.html" class="active">Usuários</a>
-      <a href="#" onclick="logout()">Sair</a>
+  <header class="navbar navbar-expand-md d-print-none">
+    <div class="container-xl">
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar-menu">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <a href="/admin/index.html" class="navbar-brand">
+        <img src="/img/logo-vistoria.png" alt="VistorIA" height="32" class="navbar-brand-image me-2" />
+      </a>
+      <div class="navbar-nav flex-row order-md-last gap-2 align-items-center">
+        <span class="d-none d-md-block text-muted fs-5" id="navbar-user"></span>
+        <a href="#" class="btn btn-ghost-secondary btn-icon" onclick="logout()" title="Sair">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M14 8v-2a2 2 0 0 0 -2 -2h-7a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2 -2v-2"/><path d="M9 12h12l-3 -3m0 6l3 -3"/></svg>
+        </a>
+      </div>
+      <div class="collapse navbar-collapse" id="navbar-menu">
+        <ul class="navbar-nav">
+          <li class="nav-item"><a href="/admin/index.html" class="nav-link"><span class="nav-link-title">Dashboard</span></a></li>
+          <li class="nav-item"><a href="/admin/empresas.html" class="nav-link"><span class="nav-link-title">Empresas</span></a></li>
+          <li class="nav-item"><a href="/admin/unidades.html" class="nav-link"><span class="nav-link-title">Unidades</span></a></li>
+          <li class="nav-item"><a href="/admin/itens.html" class="nav-link"><span class="nav-link-title">Itens</span></a></li>
+          <li class="nav-item active"><a href="/admin/usuarios.html" class="nav-link"><span class="nav-link-title">Usuários</span></a></li>
+        </ul>
+      </div>
     </div>
-    <span class="navbar-user" id="navbar-user"></span>
-  </nav>
+  </header>
 
-  <div class="container main-content">
-
-    <div class="section-header">
-      <h2>Usuários</h2>
-      <button class="btn btn-primary btn-sm" onclick="abrirModalCriar()">+ Novo Usuário</button>
-    </div>
-
-    <div class="card">
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Nome</th>
-              <th>Perfil</th>
-              <th>Unidades</th>
-              <th>Status</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody id="tabela-usuarios">
-            <tr><td colspan="5" style="text-align:center;color:#999">Carregando...</td></tr>
-          </tbody>
-        </table>
+  <div class="page-wrapper">
+    <div class="page-header d-print-none">
+      <div class="container-xl">
+        <div class="row g-2 align-items-center">
+          <div class="col">
+            <div class="page-pretitle">Administração</div>
+            <h2 class="page-title">Usuários</h2>
+          </div>
+          <div class="col-auto ms-auto d-print-none">
+            <button class="btn btn-primary" onclick="abrirModalCriar()">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Novo Usuário
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
+    <div class="page-body">
+      <div class="container-xl">
+        <div class="card">
+          <div class="table-responsive">
+            <table class="table table-vcenter table-hover card-table">
+              <thead>
+                <tr>
+                  <th>Nome</th>
+                  <th class="w-1">Perfil</th>
+                  <th class="d-none d-md-table-cell">Unidades</th>
+                  <th class="w-1">Status</th>
+                  <th class="w-1">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="tabela-usuarios">
+                <tr><td colspan="5" class="text-center text-muted py-4">
+                  <div class="spinner-border spinner-border-sm me-2" role="status"></div>Carregando...
+                </td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Modal Criar Usuário -->
-  <div class="modal-overlay" id="modal-criar">
-    <div class="modal">
-      <div class="modal-header">
-        <h3>Novo Usuário</h3>
-        <button class="modal-close" onclick="fecharModalCriar()">✕</button>
-      </div>
-      <div class="alert alert-error" id="criar-erro"></div>
-      <div class="alert alert-success" id="criar-ok"></div>
-      <div class="form-group">
-        <label>Nome *</label>
-        <input type="text" id="criar-nome" placeholder="Nome completo" />
-      </div>
-      <div class="form-group">
-        <label>E-mail *</label>
-        <input type="email" id="criar-email" placeholder="email@exemplo.com" />
-      </div>
-      <div class="form-group">
-        <label>Senha *</label>
-        <input type="password" id="criar-senha" placeholder="Mínimo 6 caracteres" />
-      </div>
-      <div class="form-group">
-        <label>Perfil</label>
-        <select id="criar-perfil">
-          <option value="usuario">Usuário</option>
-          <option value="analista">Analista</option>
-          <option value="admin">Admin</option>
-        </select>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-neutral btn-sm" onclick="fecharModalCriar()">Cancelar</button>
-        <button class="btn btn-primary btn-sm" id="btn-criar" onclick="criarUsuario()">Criar</button>
+  <div class="modal modal-blur fade" id="modal-criar" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Novo Usuário</h5>
+          <button type="button" class="btn-close" onclick="fecharModalCriar()"></button>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-danger d-none" id="criar-erro"></div>
+          <div class="alert alert-success d-none" id="criar-ok"></div>
+          <div class="mb-3">
+            <label class="form-label required">Nome</label>
+            <input type="text" id="criar-nome" class="form-control" placeholder="Nome completo" />
+          </div>
+          <div class="mb-3">
+            <label class="form-label required">E-mail</label>
+            <input type="email" id="criar-email" class="form-control" placeholder="email@exemplo.com" />
+          </div>
+          <div class="mb-3">
+            <label class="form-label required">Senha</label>
+            <input type="password" id="criar-senha" class="form-control" placeholder="Mínimo 6 caracteres" />
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Perfil</label>
+            <select id="criar-perfil" class="form-select">
+              <option value="usuario">Usuário</option>
+              <option value="analista">Analista</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-link link-secondary me-auto" onclick="fecharModalCriar()">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="btn-criar" onclick="criarUsuario()">Criar</button>
+        </div>
       </div>
     </div>
   </div>
 
   <!-- Modal Editar Perfil -->
-  <div class="modal-overlay" id="modal-editar">
-    <div class="modal">
-      <div class="modal-header">
-        <h3>Editar Usuário</h3>
-        <button class="modal-close" onclick="fecharModalEditar()">✕</button>
-      </div>
-      <div class="alert alert-error" id="editar-erro"></div>
-      <div class="form-group">
-        <label>Nome</label>
-        <input type="text" id="editar-nome" placeholder="Nome completo" />
-      </div>
-      <div class="form-group">
-        <label>Perfil</label>
-        <select id="editar-perfil">
-          <option value="usuario">Usuário</option>
-          <option value="analista">Analista</option>
-          <option value="admin">Admin</option>
-        </select>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-neutral btn-sm" onclick="fecharModalEditar()">Cancelar</button>
-        <button class="btn btn-primary btn-sm" id="btn-editar" onclick="salvarEdicao()">Salvar</button>
+  <div class="modal modal-blur fade" id="modal-editar" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-sm modal-dialog-centered" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Editar Usuário</h5>
+          <button type="button" class="btn-close" onclick="fecharModalEditar()"></button>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-danger d-none" id="editar-erro"></div>
+          <div class="mb-3">
+            <label class="form-label">Nome</label>
+            <input type="text" id="editar-nome" class="form-control" placeholder="Nome completo" />
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Perfil</label>
+            <select id="editar-perfil" class="form-select">
+              <option value="usuario">Usuário</option>
+              <option value="analista">Analista</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-link link-secondary me-auto" onclick="fecharModalEditar()">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="btn-editar" onclick="salvarEdicao()">Salvar</button>
+        </div>
       </div>
     </div>
   </div>
 
   <!-- Modal Vínculos -->
-  <div class="modal-overlay" id="modal-vinculos">
-    <div class="modal" style="max-width:560px">
-      <div class="modal-header">
-        <h3>Unidades de <span id="vinculos-nome"></span></h3>
-        <button class="modal-close" onclick="fecharModalVinculos()">✕</button>
-      </div>
-      <div class="alert alert-error" id="vinculos-erro"></div>
-      <div id="vinculos-lista" style="margin-bottom:16px;min-height:40px"></div>
-      <div class="form-group" style="display:flex;gap:8px;margin-bottom:0">
-        <select id="vinculos-select" style="flex:1"></select>
-        <button class="btn btn-primary btn-sm" onclick="vincular()">Vincular</button>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-neutral btn-sm" onclick="fecharModalVinculos()">Fechar</button>
+  <div class="modal modal-blur fade" id="modal-vinculos" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Unidades de <span id="vinculos-nome" class="fw-bold"></span></h5>
+          <button type="button" class="btn-close" onclick="fecharModalVinculos()"></button>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-danger d-none" id="vinculos-erro"></div>
+          <div id="vinculos-lista" class="mb-3"></div>
+          <div class="d-flex gap-2">
+            <select id="vinculos-select" class="form-select"></select>
+            <button class="btn btn-primary" onclick="vincular()">Vincular</button>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-link link-secondary me-auto" onclick="fecharModalVinculos()">Fechar</button>
+        </div>
       </div>
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/js/tabler.min.js"></script>
   <script type="module">
     import { requireLogin, requireRole, getUser, auth, perfis, empresas } from '/js/api.js';
 
@@ -154,33 +184,40 @@
     let vinculosId    = null;
     let todasUnidades = [];
 
-    // ── Carregar tabela ───────────────────────────
+    const getModalCriar    = () => window.bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-criar'));
+    const getModalEditar   = () => window.bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-editar'));
+    const getModalVinculos = () => window.bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-vinculos'));
+
+    const perfilBadge = {
+      admin:    '<span class="badge bg-orange-lt text-orange">admin</span>',
+      analista: '<span class="badge bg-blue-lt text-blue">analista</span>',
+      usuario:  '<span class="badge bg-secondary-lt text-secondary">usuário</span>'
+    };
+
+    // ── Carregar tabela ─────────────────────────────
     async function carregar() {
       const tbody = document.getElementById('tabela-usuarios');
       try {
         const res = await perfis.listar();
         if (!res.data?.length) {
-          tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#999">Nenhum usuário cadastrado.</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">Nenhum usuário cadastrado.</td></tr>';
           return;
         }
-        // Busca vínculos de cada usuário em paralelo
         const rows = await Promise.all(res.data.map(async u => {
           let unidades = [];
-          try {
-            const v = await perfis.unidades(u.id);
-            unidades = v.data || [];
-          } catch (_) {}
-          const tags = unidades.map(v => `<span class="tag">${v.unidades?.nome || v.unidade_id}</span>`).join('') || '—';
-          const badgePerfil = { admin: 'badge-orange', analista: 'badge-blue', usuario: 'badge-gray' }[u.perfil] || 'badge-gray';
+          try { const v = await perfis.unidades(u.id); unidades = v.data || []; } catch (_) {}
+          const tags = unidades.map(v =>
+            `<span class="badge bg-blue-lt text-blue me-1">${v.unidades?.nome || v.unidade_id}</span>`
+          ).join('') || '<span class="text-muted">—</span>';
           return `<tr>
-            <td>${u.nome}</td>
-            <td><span class="badge ${badgePerfil}">${u.perfil}</span></td>
-            <td>${tags}</td>
-            <td><span class="badge ${u.ativo ? 'badge-green' : 'badge-red'}">${u.ativo ? 'Ativo' : 'Inativo'}</span></td>
-            <td class="actions">
-              <button class="btn btn-neutral btn-sm" onclick="abrirEditar('${u.id}','${u.nome}','${u.perfil}')">Editar</button>
-              <button class="btn btn-primary btn-sm" onclick="abrirVinculos('${u.id}','${u.nome}')">Unidades</button>
-              <button class="btn ${u.ativo ? 'btn-danger' : 'btn-success'} btn-sm" onclick="toggleAtivo('${u.id}',${u.ativo})">
+            <td class="fw-medium">${u.nome}<div class="text-muted small">${u.email || ''}</div></td>
+            <td>${perfilBadge[u.perfil] || u.perfil}</td>
+            <td class="d-none d-md-table-cell">${tags}</td>
+            <td><span class="badge ${u.ativo ? 'bg-success-lt text-success' : 'bg-danger-lt text-danger'}">${u.ativo ? 'Ativo' : 'Inativo'}</span></td>
+            <td class="text-nowrap">
+              <button class="btn btn-sm btn-ghost-secondary" onclick="abrirEditar('${u.id}','${esc(u.nome)}','${u.perfil}')">Editar</button>
+              <button class="btn btn-sm btn-ghost-primary" onclick="abrirVinculos('${u.id}','${esc(u.nome)}')">Unidades</button>
+              <button class="btn btn-sm ${u.ativo ? 'btn-ghost-danger' : 'btn-ghost-success'}" onclick="toggleAtivo('${u.id}',${u.ativo})">
                 ${u.ativo ? 'Desativar' : 'Ativar'}
               </button>
             </td>
@@ -188,19 +225,19 @@
         }));
         tbody.innerHTML = rows.join('');
       } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="5" style="color:#c62828">${err.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="text-danger text-center">${err.message}</td></tr>`;
       }
     }
 
-    // ── Criar usuário ─────────────────────────────
+    // ── Criar usuário ───────────────────────────────
     window.abrirModalCriar = () => {
       ['criar-nome','criar-email','criar-senha'].forEach(id => document.getElementById(id).value = '');
       document.getElementById('criar-perfil').value = 'usuario';
-      document.getElementById('criar-erro').classList.remove('show');
-      document.getElementById('criar-ok').classList.remove('show');
-      document.getElementById('modal-criar').classList.add('show');
+      document.getElementById('criar-erro').classList.add('d-none');
+      document.getElementById('criar-ok').classList.add('d-none');
+      getModalCriar().show();
     };
-    window.fecharModalCriar = () => document.getElementById('modal-criar').classList.remove('show');
+    window.fecharModalCriar = () => getModalCriar().hide();
 
     window.criarUsuario = async () => {
       const nome   = document.getElementById('criar-nome').value.trim();
@@ -211,13 +248,15 @@
       const ok     = document.getElementById('criar-ok');
       const btn    = document.getElementById('btn-criar');
 
-      erro.classList.remove('show');
-      ok.classList.remove('show');
-      if (!nome || !email || !senha) { erro.textContent = 'Nome, e-mail e senha são obrigatórios.'; erro.classList.add('show'); return; }
-
+      erro.classList.add('d-none');
+      ok.classList.add('d-none');
+      if (!nome || !email || !senha) {
+        erro.textContent = 'Nome, e-mail e senha são obrigatórios.';
+        erro.classList.remove('d-none');
+        return;
+      }
       btn.disabled = true;
       try {
-        // 1. Registra no auth
         const res = await fetch('/api/auth/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
@@ -225,39 +264,35 @@
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Erro ao registrar');
-
-        // 2. Cria perfil no banco
         await perfis.criar({ id: data.user.id, nome, perfil });
-
-        ok.textContent = `✅ Usuário ${nome} criado com sucesso!`;
-        ok.classList.add('show');
+        ok.textContent = `Usuário ${nome} criado com sucesso!`;
+        ok.classList.remove('d-none');
         ['criar-nome','criar-email','criar-senha'].forEach(id => document.getElementById(id).value = '');
         carregar();
       } catch (err) {
         erro.textContent = err.message;
-        erro.classList.add('show');
+        erro.classList.remove('d-none');
       } finally {
         btn.disabled = false;
       }
     };
 
-    // ── Editar perfil ─────────────────────────────
+    // ── Editar perfil ───────────────────────────────
     window.abrirEditar = (id, nome, perfil) => {
       editandoId = id;
       document.getElementById('editar-nome').value   = nome;
       document.getElementById('editar-perfil').value = perfil;
-      document.getElementById('editar-erro').classList.remove('show');
-      document.getElementById('modal-editar').classList.add('show');
+      document.getElementById('editar-erro').classList.add('d-none');
+      getModalEditar().show();
     };
-    window.fecharModalEditar = () => document.getElementById('modal-editar').classList.remove('show');
+    window.fecharModalEditar = () => getModalEditar().hide();
 
     window.salvarEdicao = async () => {
       const nome   = document.getElementById('editar-nome').value.trim();
       const perfil = document.getElementById('editar-perfil').value;
       const erro   = document.getElementById('editar-erro');
       const btn    = document.getElementById('btn-editar');
-
-      erro.classList.remove('show');
+      erro.classList.add('d-none');
       btn.disabled = true;
       try {
         await perfis.editar(editandoId, { nome, perfil });
@@ -265,13 +300,11 @@
         carregar();
       } catch (err) {
         erro.textContent = err.message;
-        erro.classList.add('show');
-      } finally {
-        btn.disabled = false;
-      }
+        erro.classList.remove('d-none');
+      } finally { btn.disabled = false; }
     };
 
-    // ── Ativar / Desativar ────────────────────────
+    // ── Ativar / Desativar ──────────────────────────
     window.toggleAtivo = async (id, ativo) => {
       try {
         if (ativo) await perfis.desativar(id);
@@ -280,29 +313,32 @@
       } catch (err) { alert(err.message); }
     };
 
-    // ── Vínculos de unidades ──────────────────────
+    // ── Vínculos de unidades ────────────────────────
     window.abrirVinculos = async (id, nome) => {
       vinculosId = id;
       document.getElementById('vinculos-nome').textContent = nome;
-      document.getElementById('vinculos-erro').classList.remove('show');
-      document.getElementById('modal-vinculos').classList.add('show');
+      document.getElementById('vinculos-erro').classList.add('d-none');
+      getModalVinculos().show();
       await carregarVinculos();
       await carregarSelectUnidades();
     };
-    window.fecharModalVinculos = () => document.getElementById('modal-vinculos').classList.remove('show');
+    window.fecharModalVinculos = () => getModalVinculos().hide();
 
     async function carregarVinculos() {
       const lista = document.getElementById('vinculos-lista');
       try {
         const res = await perfis.unidades(vinculosId);
-        if (!res.data?.length) { lista.innerHTML = '<p style="color:#999;font-size:13px">Nenhuma unidade vinculada.</p>'; return; }
+        if (!res.data?.length) {
+          lista.innerHTML = '<p class="text-muted small">Nenhuma unidade vinculada.</p>';
+          return;
+        }
         lista.innerHTML = res.data.map(v => `
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f0f0f0">
-            <span style="font-size:14px">${v.unidades?.nome || v.unidade_id}</span>
-            <button class="btn btn-danger btn-sm" onclick="desvincular('${v.unidade_id}')">Remover</button>
+          <div class="d-flex align-items-center justify-content-between py-2 border-bottom">
+            <span>${v.unidades?.nome || v.unidade_id}</span>
+            <button class="btn btn-sm btn-ghost-danger" onclick="desvincular('${v.unidade_id}')">Remover</button>
           </div>`).join('');
       } catch (err) {
-        lista.innerHTML = `<p style="color:#c62828;font-size:13px">${err.message}</p>`;
+        lista.innerHTML = `<p class="text-danger small">${err.message}</p>`;
       }
     }
 
@@ -311,7 +347,6 @@
       try {
         if (!todasUnidades.length) {
           const res = await empresas.listar(true);
-          // Busca unidades de cada empresa
           todasUnidades = [];
           for (const emp of (res.data || [])) {
             const r = await fetch(`/api/empresas/${emp.id}`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } });
@@ -320,7 +355,7 @@
           }
         }
         sel.innerHTML = todasUnidades.map(u => `<option value="${u.id}">${u.nome}</option>`).join('');
-      } catch (err) {
+      } catch {
         sel.innerHTML = '<option>Erro ao carregar</option>';
       }
     }
@@ -328,31 +363,32 @@
     window.vincular = async () => {
       const unidade_id = document.getElementById('vinculos-select').value;
       const erro = document.getElementById('vinculos-erro');
-      erro.classList.remove('show');
+      erro.classList.add('d-none');
       try {
         await perfis.vincular(vinculosId, unidade_id);
         await carregarVinculos();
         carregar();
       } catch (err) {
         erro.textContent = err.message;
-        erro.classList.add('show');
+        erro.classList.remove('d-none');
       }
     };
 
     window.desvincular = async (unidade_id) => {
       const erro = document.getElementById('vinculos-erro');
-      erro.classList.remove('show');
+      erro.classList.add('d-none');
       try {
         await perfis.desvincular(vinculosId, unidade_id);
         await carregarVinculos();
         carregar();
       } catch (err) {
         erro.textContent = err.message;
-        erro.classList.add('show');
+        erro.classList.remove('d-none');
       }
     };
 
     window.logout = async () => { await auth.logout(); window.location.href = '/index.html'; };
+    function esc(s) { return String(s).replace(/'/g, "\\'"); }
 
     carregar();
   </script>
