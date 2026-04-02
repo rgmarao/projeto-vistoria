@@ -1,7 +1,36 @@
-run = "bash pull-from-github.sh && node index.js"
+run = "bash pull-from-github.sh && node --watch index.js"
+modules = ["nodejs-20"]
 
 [nix]
 channel = "stable-23_05"
 
 [deployment]
 run = ["sh", "-c", "bash pull-from-github.sh && node index.js"]
+
+[[ports]]
+localPort = 5000
+externalPort = 80
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Start application"
+
+[[workflows.workflow]]
+name = "Start application"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev"
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"

@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Estrutura de Vistoria</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <style>
+    .breadcrumb {
+      font-size: 13px;
+      color: #888;
+      margin-bottom: 6px;
+    }
+    .breadcrumb a { color: #1565c0; text-decoration: none; }
+    .breadcrumb a:hover { text-decoration: underline; }
+
+    .estrutura-grid {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+    @media (max-width: 700px) {
+      .estrutura-grid { grid-template-columns: 1fr; }
+    }
+
+    /* Painel Áreas */
+    .areas-panel .area-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      border: 2px solid transparent;
+      margin-bottom: 6px;
+      background: #f8f9fa;
+      transition: border-color .15s, background .15s;
+      gap: 8px;
+    }
+    .areas-panel .area-item:hover  { background: #e8f0fe; }
+    .areas-panel .area-item.active { border-color: #1565c0; background: #e8f0fe; }
+    .areas-panel .area-item.inativa { opacity: .55; }
+    .area-item-nome { font-size: 14px; font-weight: 500; color: #222; flex: 1; }
+    .area-item-acoes { display: flex; gap: 4px; flex-shrink: 0; }
+
+    /* Painel Itens */
+    .itens-panel .item-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      border-bottom: 1px solid #f0f0f0;
+      gap: 8px;
+    }
+    .itens-panel .item-row:last-child { border-bottom: none; }
+    .item-descricao { font-size: 14px; color: #222; flex: 1; }
+    .item-ordem     { font-size: 11px; color: #bbb; width: 32px; text-align: right; }
+
+    .empty-panel {
+      padding: 32px 20px;
+      text-align: center;
+      color: #aaa;
+      font-size: 14px;
+    }
+
+    /* Modal adicionar item */
+    .itens-busca-lista {
+      max-height: 280px;
+      overflow-y: auto;
+      border: 1px solid #eee;
+      border-radius: 8px;
+      margin-top: 8px;
+    }
+    .item-opcao {
+      padding: 9px 14px;
+      cursor: pointer;
+      font-size: 14px;
+      border-bottom: 1px solid #f5f5f5;
+      transition: background .1s;
+    }
+    .item-opcao:last-child { border-bottom: none; }
+    .item-opcao:hover      { background: #e8f0fe; }
+    .item-opcao.selecionado { background: #bbdefb; }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar">
+    <span class="navbar-brand">🏗️ Vistoria Online</span>
+    <div class="navbar-nav">
+      <a href="/admin/index.html">Dashboard</a>
+      <a href="/admin/empresas.html">Empresas</a>
+      <a href="/admin/unidades.html">Unidades</a>
+      <a href="/admin/itens.html">Itens</a>
+      <a href="/admin/usuarios.html">Usuários</a>
+      <a href="#" onclick="logout()">Sair</a>
+    </div>
+    <span class="navbar-user" id="navbar-user"></span>
+  </nav>
+
+  <div class="container main-content">
+
+    <div class="breadcrumb">
+      <a href="/admin/unidades.html">← Unidades</a>
+    </div>
+
+    <div class="section-header">
+      <h2 id="titulo-unidade">Estrutura de Vistoria</h2>
+    </div>
+
+    <div class="estrutura-grid">
+
+      <!-- ── Coluna Áreas ──────────────────────────── -->
+      <div>
+        <div class="section-header" style="margin-bottom:10px">
+          <h3 style="font-size:15px;margin:0">Áreas</h3>
+          <button class="btn btn-primary btn-sm" onclick="abrirModalArea()">+ Área</button>
+        </div>
+        <div id="lista-areas">
+          <div class="empty-panel">Carregando áreas...</div>
+        </div>
+      </div>
+
+      <!-- ── Coluna Itens ──────────────────────────── -->
+      <div class="card" style="min-height:200px">
+        <div id="itens-header" style="padding:16px 20px 0;display:flex;align-items:center;justify-content:space-between">
+          <strong id="itens-titulo" style="font-size:15px;color:#555">Selecione uma área</strong>
+          <button class="btn btn-primary btn-sm" id="btn-add-item" style="display:none"
+            onclick="abrirModalAddItem()">+ Adicionar Item</button>
+        </div>
+        <div class="itens-panel" id="lista-itens">
+          <div class="empty-panel">Selecione uma área para ver seus itens.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Modal Criar/Editar Área -->
+  <div class="modal-overlay" id="modal-area">
+    <div class="modal" style="max-width:400px">
+      <div class="modal-header">
+        <h3 id="modal-area-titulo">Nova Área</h3>
+        <button class="modal-close" onclick="fecharModalArea()">✕</button>
+      </div>
+      <div class="alert alert-error" id="area-erro"></div>
+      <div class="form-group">
+        <label>Nome da Área *</label>
+        <input type="text" id="area-nome" placeholder="Ex.: Fachada, Hall de entrada, Garagem..." />
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-neutral btn-sm" onclick="fecharModalArea()">Cancelar</button>
+        <button class="btn btn-primary btn-sm" id="btn-salvar-area" onclick="salvarArea()">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Adicionar Item à Área -->
+  <div class="modal-overlay" id="modal-add-item">
+    <div class="modal" style="max-width:480px">
+      <div class="modal-header">
+        <h3>Adicionar Item</h3>
+        <button class="modal-close" onclick="fecharModalAddItem()">✕</button>
+      </div>
+      <div class="alert alert-error" id="additem-erro"></div>
+      <div class="form-group" style="margin-bottom:6px">
+        <label>Buscar na biblioteca</label>
+        <input type="text" id="busca-item" placeholder="Digite para filtrar..." oninput="filtrarItens()" />
+      </div>
+      <div class="itens-busca-lista" id="itens-busca-lista"></div>
+      <div class="modal-footer">
+        <button class="btn btn-neutral btn-sm" onclick="fecharModalAddItem()">Cancelar</button>
+        <button class="btn btn-primary btn-sm" id="btn-confirmar-item" onclick="confirmarAddItem()">Adicionar</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { requireLogin, requireRole, getUser, auth } from '/js/api.js';
+    import { unidades, itens, estrutura } from '/js/api.js';
+
+    requireLogin();
+    requireRole('admin');
+    document.getElementById('navbar-user').textContent = getUser()?.nome || '';
+
+    const params    = new URLSearchParams(location.search);
+    const unidadeId = params.get('id');
+    if (!unidadeId) { alert('ID da unidade não informado.'); history.back(); }
+
+    let areaAtiva        = null; // { id, nome }
+    let editandoAreaId   = null;
+    let bibliotecaItens  = [];   // todos os itens da biblioteca
+    let itensDaArea      = [];   // itens já associados à área ativa
+    let itemSelecionado  = null; // id do item selecionado no modal
+
+    // ── Carrega dados iniciais ────────────────────────────────────
+    async function init() {
+      try {
+        const res = await unidades.detalhe(unidadeId);
+        const u   = res.data;
+        document.getElementById('titulo-unidade').textContent =
+          `Estrutura — ${u.nome}${u.empresas?.nome ? ' · ' + u.empresas.nome : ''}`;
+      } catch { /* ok */ }
+
+      // Pré-carrega biblioteca de itens
+      try {
+        const r = await itens.listar(true); // só ativos
+        bibliotecaItens = r.data || [];
+      } catch { /* ok */ }
+
+      carregarAreas();
+    }
+
+    // ── Áreas ─────────────────────────────────────────────────────
+    async function carregarAreas() {
+      const div = document.getElementById('lista-areas');
+      try {
+        const res = await estrutura.listarAreas(unidadeId);
+        const lista = res.data || [];
+
+        if (!lista.length) {
+          div.innerHTML = '<div class="empty-panel">Nenhuma área cadastrada.<br>Clique em "+ Área" para começar.</div>';
+          return;
+        }
+
+        div.innerHTML = lista.map(a => `
+          <div class="area-item ${areaAtiva?.id === a.id ? 'active' : ''} ${!a.ativo ? 'inativa' : ''}"
+               onclick="selecionarArea('${a.id}','${esc(a.nome)}')">
+            <span class="area-item-nome">${a.nome}${!a.ativo ? ' <em style=\'font-size:11px;color:#e57373\'>(inativa)</em>' : ''}</span>
+            <div class="area-item-acoes">
+              <button class="btn btn-neutral btn-sm" title="Editar"
+                onclick="event.stopPropagation(); abrirEditarArea('${a.id}','${esc(a.nome)}')">✏️</button>
+              <button class="btn ${a.ativo ? 'btn-danger' : 'btn-success'} btn-sm" title="${a.ativo ? 'Desativar' : 'Ativar'}"
+                onclick="event.stopPropagation(); toggleArea('${a.id}',${a.ativo})">${a.ativo ? '⏸' : '▶'}</button>
+            </div>
+          </div>`).join('');
+
+        // Recarrega itens se há área ativa
+        if (areaAtiva) selecionarArea(areaAtiva.id, areaAtiva.nome);
+
+      } catch (err) {
+        div.innerHTML = `<div class="empty-panel" style="color:#c62828">${err.message}</div>`;
+      }
+    }
+
+    window.selecionarArea = async (id, nome) => {
+      areaAtiva = { id, nome };
+      document.getElementById('itens-titulo').textContent = nome;
+      document.getElementById('btn-add-item').style.display = '';
+
+      // Marca item ativo na lista
+      document.querySelectorAll('.area-item').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.area-item').forEach(el => {
+        if (el.onclick?.toString().includes(`'${id}'`)) el.classList.add('active');
+      });
+
+      await carregarItensArea();
+    };
+
+    async function carregarItensArea() {
+      const div = document.getElementById('lista-itens');
+      div.innerHTML = '<div class="empty-panel">Carregando...</div>';
+      try {
+        const res = await estrutura.listarItens(areaAtiva.id);
+        itensDaArea = res.data || [];
+
+        if (!itensDaArea.length) {
+          div.innerHTML = '<div class="empty-panel">Nenhum item nesta área.<br>Clique em "+ Adicionar Item".</div>';
+          return;
+        }
+
+        div.innerHTML = itensDaArea.map(i => `
+          <div class="item-row">
+            <span class="item-descricao">${i.descricao}</span>
+            <button class="btn btn-danger btn-sm" title="Remover da área"
+              onclick="removerItem('${i.area_item_id}')">✕</button>
+          </div>`).join('');
+      } catch (err) {
+        div.innerHTML = `<div class="empty-panel" style="color:#c62828">${err.message}</div>`;
+      }
+    }
+
+    // ── Modal Área ────────────────────────────────────────────────
+    window.abrirModalArea = () => {
+      editandoAreaId = null;
+      document.getElementById('modal-area-titulo').textContent = 'Nova Área';
+      document.getElementById('area-nome').value = '';
+      document.getElementById('area-erro').classList.remove('show');
+      document.getElementById('modal-area').classList.add('show');
+      setTimeout(() => document.getElementById('area-nome').focus(), 100);
+    };
+
+    window.abrirEditarArea = (id, nome) => {
+      editandoAreaId = id;
+      document.getElementById('modal-area-titulo').textContent = 'Editar Área';
+      document.getElementById('area-nome').value = nome;
+      document.getElementById('area-erro').classList.remove('show');
+      document.getElementById('modal-area').classList.add('show');
+    };
+
+    window.fecharModalArea = () => document.getElementById('modal-area').classList.remove('show');
+
+    window.salvarArea = async () => {
+      const nome = document.getElementById('area-nome').value.trim();
+      const erro = document.getElementById('area-erro');
+      const btn  = document.getElementById('btn-salvar-area');
+      if (!nome) { erro.textContent = 'Nome é obrigatório.'; erro.classList.add('show'); return; }
+      btn.disabled = true;
+      erro.classList.remove('show');
+      try {
+        if (editandoAreaId) await estrutura.editarArea(editandoAreaId, { nome });
+        else                await estrutura.criarArea(unidadeId, { nome });
+        fecharModalArea();
+        carregarAreas();
+      } catch (err) {
+        erro.textContent = err.message;
+        erro.classList.add('show');
+      } finally {
+        btn.disabled = false;
+      }
+    };
+
+    window.toggleArea = async (id, ativo) => {
+      try {
+        if (ativo) await estrutura.desativarArea(id);
+        else       await estrutura.ativarArea(id);
+        carregarAreas();
+      } catch (err) { alert(err.message); }
+    };
+
+    // ── Modal Adicionar Item ──────────────────────────────────────
+    window.abrirModalAddItem = () => {
+      itemSelecionado = null;
+      document.getElementById('busca-item').value = '';
+      document.getElementById('additem-erro').classList.remove('show');
+      filtrarItens();
+      document.getElementById('modal-add-item').classList.add('show');
+      setTimeout(() => document.getElementById('busca-item').focus(), 100);
+    };
+
+    window.fecharModalAddItem = () => {
+      document.getElementById('modal-add-item').classList.remove('show');
+      itemSelecionado = null;
+    };
+
+    window.filtrarItens = () => {
+      const busca    = document.getElementById('busca-item').value.toLowerCase();
+      const jaAssoc  = new Set(itensDaArea.map(i => i.item_id));
+      const filtered = bibliotecaItens
+        .filter(i => !jaAssoc.has(i.id))
+        .filter(i => !busca || i.descricao.toLowerCase().includes(busca));
+
+      const div = document.getElementById('itens-busca-lista');
+      if (!filtered.length) {
+        div.innerHTML = '<div style="padding:12px;color:#aaa;font-size:13px">Nenhum item disponível.</div>';
+        return;
+      }
+      div.innerHTML = filtered.map(i => `
+        <div class="item-opcao ${itemSelecionado === i.id ? 'selecionado' : ''}"
+             onclick="selecionarItemModal('${i.id}', this)">
+          ${i.descricao}
+        </div>`).join('');
+    };
+
+    window.selecionarItemModal = (id, el) => {
+      itemSelecionado = id;
+      document.querySelectorAll('.item-opcao').forEach(e => e.classList.remove('selecionado'));
+      el.classList.add('selecionado');
+    };
+
+    window.confirmarAddItem = async () => {
+      const erro = document.getElementById('additem-erro');
+      if (!itemSelecionado) {
+        erro.textContent = 'Selecione um item da lista.'; erro.classList.add('show'); return;
+      }
+      erro.classList.remove('show');
+      const btn = document.getElementById('btn-confirmar-item');
+      btn.disabled = true;
+      try {
+        await estrutura.adicionarItem(areaAtiva.id, { item_id: itemSelecionado });
+        fecharModalAddItem();
+        carregarItensArea();
+      } catch (err) {
+        erro.textContent = err.message; erro.classList.add('show');
+      } finally {
+        btn.disabled = false;
+      }
+    };
+
+    window.removerItem = async (areaItemId) => {
+      if (!confirm('Remover este item da área?')) return;
+      try {
+        await estrutura.removerItem(areaItemId);
+        carregarItensArea();
+      } catch (err) { alert(err.message); }
+    };
+
+    window.logout = async () => { await auth.logout(); window.location.href = '/index.html'; };
+
+    function esc(str) { return String(str).replace(/'/g, "\\'"); }
+
+    init();
+  </script>
+
+</body>
+</html>

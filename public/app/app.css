@@ -1,0 +1,257 @@
+/* ── Reset mobile ───────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  margin: 0;
+  background: #f2f4f8;
+  color: #222;
+  overscroll-behavior-y: contain;
+}
+
+/* ── Cabeçalho do app ────────────────────────────────────────── */
+.app-header {
+  background: #1565c0;
+  color: #fff;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 8px rgba(0,0,0,.2);
+}
+.app-header h1    { font-size: 16px; font-weight: 700; margin: 0; }
+.app-header .sub  { font-size: 11px; opacity: .75; margin-top: 1px; }
+
+/* ── Indicadores ─────────────────────────────────────────────── */
+.online-dot   { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #4caf50; margin-right: 4px; }
+.offline-dot  { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #f44336; margin-right: 4px; }
+
+/* ── Barra de sync ───────────────────────────────────────────── */
+.sync-bar {
+  background: #e65100;
+  color: #fff;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 500;
+}
+.btn-sync {
+  background: #fff;
+  color: #e65100;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* ── Labels de seção ─────────────────────────────────────────── */
+.section-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: .6px;
+  padding: 16px 16px 6px;
+}
+
+/* ── Card de unidade ─────────────────────────────────────────── */
+.unit-card {
+  background: #fff;
+  border-radius: 14px;
+  margin: 6px 16px;
+  padding: 14px 16px;
+  box-shadow: 0 1px 6px rgba(0,0,0,.07);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.unit-card-info h3 { font-size: 15px; font-weight: 600; margin: 0 0 3px; }
+.unit-card-info p  { font-size: 12px; color: #888; margin: 0; }
+.btn-nova {
+  background: #1565c0;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 9px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ── Card de rascunho ────────────────────────────────────────── */
+.draft-card {
+  background: #fff;
+  border-radius: 14px;
+  margin: 6px 16px;
+  padding: 14px 16px;
+  box-shadow: 0 1px 6px rgba(0,0,0,.07);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-left: 4px solid #1565c0;
+}
+.draft-card.pronto { border-left-color: #e65100; }
+.draft-card-info h3 { font-size: 14px; font-weight: 600; margin: 0 0 3px; }
+.draft-card-info p  { font-size: 12px; color: #888; margin: 0; }
+.draft-acoes { display: flex; gap: 6px; flex-shrink: 0; }
+.btn-continuar {
+  background: #e8f0fe; color: #1565c0;
+  border: none; border-radius: 8px;
+  padding: 7px 12px; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.btn-excluir {
+  background: #fce4e4; color: #c62828;
+  border: none; border-radius: 8px;
+  padding: 7px 10px; font-size: 14px; cursor: pointer;
+}
+
+/* ── Barra de progresso ──────────────────────────────────────── */
+.progress-bar { height: 4px; background: #dce8ff; }
+.progress-fill { height: 100%; background: #1565c0; transition: width .3s ease; }
+.progress-txt { font-size: 11px; color: #888; text-align: right; padding: 4px 16px 0; }
+
+/* ── Área (seção expansível) ────────────────────────────────── */
+.area-section { margin-bottom: 2px; }
+
+.area-header {
+  background: #e8f0fe;
+  padding: 13px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+}
+.area-header h3     { font-size: 15px; font-weight: 600; color: #1565c0; margin: 0; }
+.area-header .count { font-size: 12px; color: #1565c0; opacity: .7; }
+.area-header .arrow { font-size: 14px; color: #1565c0; transition: transform .2s; }
+.area-header.open .arrow { transform: rotate(180deg); }
+
+.area-body          { display: none; background: #fff; }
+.area-body.open     { display: block; }
+
+/* ── Item do checklist ───────────────────────────────────────── */
+.item-check {
+  padding: 14px 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+.item-check:last-child { border-bottom: none; }
+.item-desc { font-size: 14px; font-weight: 500; color: #333; margin-bottom: 10px; line-height: 1.4; }
+
+/* Status buttons */
+.status-row { display: flex; gap: 6px; }
+.btn-status {
+  flex: 1;
+  padding: 9px 4px;
+  border: 2px solid #e0e0e0;
+  border-radius: 10px;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: all .15s;
+  color: #666;
+}
+.btn-status.ok      { border-color: #a5d6a7; color: #388e3c; }
+.btn-status.ok.ativo      { background: #388e3c; border-color: #388e3c; color: #fff; }
+.btn-status.atencao { border-color: #ffcc80; color: #e65100; }
+.btn-status.atencao.ativo { background: #f57c00; border-color: #f57c00; color: #fff; }
+.btn-status.critico { border-color: #ef9a9a; color: #c62828; }
+.btn-status.critico.ativo { background: #d32f2f; border-color: #d32f2f; color: #fff; }
+
+/* Observação */
+.obs-input {
+  width: 100%;
+  margin-top: 10px;
+  padding: 9px 12px;
+  border: 1.5px solid #e0e0e0;
+  border-radius: 10px;
+  font-size: 13px;
+  font-family: inherit;
+  resize: none;
+  outline: none;
+  color: #333;
+}
+.obs-input:focus { border-color: #1565c0; }
+
+/* Slots de foto */
+.foto-row   { display: flex; gap: 10px; margin-top: 10px; }
+.foto-slot  {
+  flex: 1;
+  aspect-ratio: 1;
+  border: 2px dashed #ddd;
+  border-radius: 10px;
+  overflow: hidden;
+  position: relative;
+  cursor: pointer;
+  background: #fafafa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 140px;
+}
+.foto-slot img     { width: 100%; height: 100%; object-fit: cover; display: block; }
+.foto-slot .ph     { font-size: 26px; color: #bbb; }
+.foto-slot .ph-txt { font-size: 10px; color: #bbb; margin-top: 2px; }
+.foto-del {
+  position: absolute;
+  top: 5px; right: 5px;
+  background: rgba(0,0,0,.55);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 24px; height: 24px;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* ── Barra inferior fixa ─────────────────────────────────────── */
+.bottom-bar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  background: #fff;
+  border-top: 1px solid #e0e0e0;
+  padding: 12px 16px;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+  display: flex;
+  gap: 10px;
+  box-shadow: 0 -2px 10px rgba(0,0,0,.08);
+}
+.btn-bar {
+  flex: 1;
+  padding: 13px;
+  border: none;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-bar-sec  { background: #e8f0fe; color: #1565c0; }
+.btn-bar-prim { background: #1565c0; color: #fff; }
+
+/* ── Empty state ─────────────────────────────────────────────── */
+.empty {
+  padding: 32px 16px;
+  text-align: center;
+  color: #bbb;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.empty span { display: block; font-size: 40px; margin-bottom: 8px; }
+
+/* ── Espaço para barra inferior ──────────────────────────────── */
+.pb-bar { height: 90px; }
