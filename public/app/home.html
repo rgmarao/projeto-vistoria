@@ -232,8 +232,9 @@
         new Date(v.created_at).toDateString() === hoje
       );
       if (duplicata) {
-        const continuar = confirm(
-          `⚠️ Já existe uma vistoria em andamento para "${nome}" criada hoje.\n\nDeseja criar uma nova mesmo assim?`
+        const continuar = await dialogo(
+          `Já existe uma vistoria em andamento para "${nome}" criada hoje.\n\nDeseja criar uma nova mesmo assim?`,
+          { cancelar: true }
         );
         if (!continuar) return;
       }
@@ -246,7 +247,7 @@
     };
 
     window.excluirRascunho = async (local_id) => {
-      if (!confirm('Excluir este rascunho? Os dados não poderão ser recuperados.')) return;
+      if (!await dialogo('Excluir este rascunho? Os dados não poderão ser recuperados.', { cancelar: true })) return;
       await db.deletarVistoria(local_id);
       carregarRascunhos();
     };
@@ -254,7 +255,7 @@
     // ── Sincronização ─────────────────────────────────────────
     window.sincronizar = async () => {
       if (!navigator.onLine) {
-        alert('Sem conexão. Conecte-se à internet e tente novamente.');
+        await dialogo('Sem conexão. Conecte-se à internet e tente novamente.');
         return;
       }
       const btn = document.getElementById('btn-sync');
@@ -279,9 +280,9 @@
       btn.disabled    = false;
       btn.textContent = 'Sincronizar';
       if (errosMsgs.length > 0) {
-        alert(`${ok} enviada(s) com sucesso.\n\nErro(s):\n${errosMsgs.join('\n')}`);
+        await dialogo(`${ok} enviada(s) com sucesso.\n\nErro(s):\n${errosMsgs.join('\n')}`);
       } else {
-        alert(`✅ ${ok} vistoria(s) enviada(s) com sucesso!`);
+        await dialogo(`${ok} vistoria(s) enviada(s) com sucesso!`);
       }
       carregarRascunhos();
     };
@@ -349,7 +350,7 @@
     }
 
     window.logout = async () => {
-      if (!confirm('Sair do aplicativo?')) return;
+      if (!await dialogo('Sair do aplicativo?', { cancelar: true })) return;
       clearSession();
       window.location.replace('/app/index.html');
     };
@@ -359,18 +360,44 @@
       const aviso = rascunhos.length
         ? `⚠️ Atenção: você tem ${rascunhos.length} vistoria(s) não enviada(s). Elas serão perdidas.\n\nDeseja limpar mesmo assim?`
         : 'Limpar checklists em cache? (vistorias pendentes não serão afetadas)';
-      if (!confirm(aviso)) return;
+      if (!await dialogo(aviso, { cancelar: true })) return;
       const db2 = indexedDB.deleteDatabase('vistoria-offline');
-      db2.onsuccess = () => { alert('Cache limpo. O app será recarregado.'); location.reload(); };
-      db2.onerror  = () => alert('Erro ao limpar cache.');
+      db2.onsuccess = async () => { await dialogo('Cache limpo. O app será recarregado.'); location.reload(); };
+      db2.onerror  = () => dialogo('Erro ao limpar cache.');
     };
 
     function esc(s) { return String(s).replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
+
+    // ── Custom dialog ─────────────────────────────────────────
+    function dialogo(msg, { cancelar = false } = {}) {
+      return new Promise(resolve => {
+        const el = document.getElementById('app-dialog');
+        document.getElementById('dialog-msg').textContent = msg;
+        const btns = document.getElementById('dialog-btns');
+        const btnStyle = (primary) =>
+          `style="padding:9px 18px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;background:${primary ? 'var(--brand-navy)' : '#f0f2f5'};color:${primary ? '#fff' : '#555'}"`;
+        btns.innerHTML = cancelar
+          ? `<button ${btnStyle(false)} id="d-cancel">Cancelar</button><button ${btnStyle(true)} id="d-ok">OK</button>`
+          : `<button ${btnStyle(true)} id="d-ok">OK</button>`;
+        el.style.display = 'flex';
+        document.getElementById('d-ok')?.addEventListener('click', () => { el.style.display = 'none'; resolve(true); });
+        document.getElementById('d-cancel')?.addEventListener('click', () => { el.style.display = 'none'; resolve(false); });
+      });
+    }
 
     // Init
     carregarUnidades();
     carregarRascunhos();
   </script>
+
+  <!-- Custom dialog -->
+  <div id="app-dialog" style="display:none;position:fixed;inset:0;z-index:999;background:rgba(0,0,0,.5);align-items:center;justify-content:center;padding:24px">
+    <div style="background:#fff;border-radius:16px;padding:20px;max-width:300px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,.3)">
+      <div style="font-size:12px;font-weight:700;color:var(--brand-navy);letter-spacing:.05em;margin-bottom:10px">VistorIA</div>
+      <div id="dialog-msg" style="font-size:15px;color:#333;line-height:1.5;margin-bottom:20px;white-space:pre-line"></div>
+      <div id="dialog-btns" style="display:flex;gap:10px;justify-content:flex-end"></div>
+    </div>
+  </div>
 
 </body>
 </html>

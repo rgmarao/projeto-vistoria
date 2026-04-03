@@ -112,6 +112,23 @@
 
     if (!isLoggedIn()) { window.location.replace('/app/index.html'); }
 
+    // ── Custom dialog (evita domínio feio do browser) ─
+    function dialogo(msg, { cancelar = false } = {}) {
+      return new Promise(resolve => {
+        const el = document.getElementById('app-dialog');
+        document.getElementById('dialog-msg').textContent = msg;
+        const btns = document.getElementById('dialog-btns');
+        const btnStyle = (primary) =>
+          `style="padding:9px 18px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;background:${primary ? 'var(--brand-navy)' : '#f0f2f5'};color:${primary ? '#fff' : '#555'}"`;
+        btns.innerHTML = cancelar
+          ? `<button ${btnStyle(false)} id="d-cancel">Cancelar</button><button ${btnStyle(true)} id="d-ok">OK</button>`
+          : `<button ${btnStyle(true)} id="d-ok">OK</button>`;
+        el.style.display = 'flex';
+        document.getElementById('d-ok')?.addEventListener('click', () => { el.style.display = 'none'; resolve(true); });
+        document.getElementById('d-cancel')?.addEventListener('click', () => { el.style.display = 'none'; resolve(false); });
+      });
+    }
+
     const params      = new URLSearchParams(location.search);
     const localId     = params.get('local_id');
     const unidadeId   = params.get('unidade_id');
@@ -154,17 +171,17 @@
     async function init() {
       if (localId) {
         vistoria = await db.getVistoria(localId);
-        if (!vistoria) { alert('Rascunho não encontrado.'); history.back(); return; }
+        if (!vistoria) { await dialogo('Rascunho não encontrado.'); history.back(); return; }
         // Migra formato antigo (se necessário)
         if (migrarFormatoAntigo(vistoria)) await db.salvarVistoria(vistoria);
       } else {
         const cl = await db.getChecklist(unidadeId);
         if (!cl) {
-          alert('Estrutura desta unidade não encontrada no dispositivo.\n\nConecte-se à internet e acesse a tela inicial para baixar o checklist.');
+          await dialogo('Estrutura desta unidade não encontrada no dispositivo.\n\nConecte-se à internet e acesse a tela inicial para baixar o checklist.');
           history.back(); return;
         }
         if (!cl.areas?.length) {
-          alert('Esta unidade não possui áreas configuradas.\nConfigure a estrutura na web antes de fazer a vistoria.');
+          await dialogo('Esta unidade não possui áreas configuradas.\nConfigure a estrutura na web antes de fazer a vistoria.');
           history.back(); return;
         }
         vistoria = {
@@ -337,7 +354,7 @@
     window.removerOcorrencia = async (ai, ii, oi) => {
       const item = vistoria.areas[ai].itens[ii];
       if (item.ocorrencias.length <= 1) return;
-      if (!confirm('Remover esta ocorrência?')) return;
+      if (!await dialogo('Remover esta ocorrência?', { cancelar: true })) return;
       item.ocorrencias.splice(oi, 1);
       await autoSalvar();
       document.getElementById(`ocs-${ai}-${ii}`).innerHTML =
@@ -387,7 +404,7 @@
     };
 
     window.removerFoto = async (ai, ii, oi, slot) => {
-      if (!confirm('Remover esta foto?')) return;
+      if (!await dialogo('Remover esta foto?', { cancelar: true })) return;
       const oc = vistoria.areas[ai].itens[ii].ocorrencias[oi];
       if (slot === 1) oc.foto1 = null;
       else            oc.foto2 = null;
@@ -403,7 +420,7 @@
 
     // ── Progresso ─────────────────────────────────
     function itemPreenchido(item) {
-      return item.ocorrencias?.some(oc => oc.situacao !== null) ?? false;
+      return item.ocorrencias?.some(oc => oc.foto1 && oc.foto2) ?? false;
     }
 
     function atualizarContadorArea(ai) {
@@ -443,17 +460,17 @@
       const preench = vistoria.areas.reduce((s, a) => s + a.itens.filter(itemPreenchido).length, 0);
 
       if (preench === 0) {
-        alert('Avalie pelo menos um item antes de finalizar.');
+        await dialogo('Avalie pelo menos um item antes de finalizar.');
         return;
       }
       if (preench < total) {
-        const ok = confirm(`${total - preench} item(ns) ainda sem avaliação.\nDeseja finalizar assim mesmo?`);
+        const ok = await dialogo(`${total - preench} item(ns) ainda sem avaliação.\nDeseja finalizar assim mesmo?`, { cancelar: true });
         if (!ok) return;
       }
 
       vistoria.status = 'pronto';
       await autoSalvar();
-      alert('✅ Vistoria finalizada!\nEla ficará salva aqui até você sincronizar com a internet.');
+      await dialogo('Vistoria finalizada!\nEla ficará salva aqui até você sincronizar com a internet.');
       window.location.replace('/app/home.html');
     };
 
@@ -466,6 +483,15 @@
 
     init().then(abrirPrimeiraArea);
   </script>
+
+  <!-- Custom dialog (replaces browser alert/confirm) -->
+  <div id="app-dialog" style="display:none;position:fixed;inset:0;z-index:999;background:rgba(0,0,0,.5);align-items:center;justify-content:center;padding:24px">
+    <div style="background:#fff;border-radius:16px;padding:20px;max-width:300px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,.3)">
+      <div style="font-size:12px;font-weight:700;color:var(--brand-navy);letter-spacing:.05em;margin-bottom:10px">VistorIA</div>
+      <div id="dialog-msg" style="font-size:15px;color:#333;line-height:1.5;margin-bottom:20px;white-space:pre-line"></div>
+      <div id="dialog-btns" style="display:flex;gap:10px;justify-content:flex-end"></div>
+    </div>
+  </div>
 
 </body>
 </html>
