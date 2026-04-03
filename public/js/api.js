@@ -96,7 +96,8 @@ export const vistorias = {
   detalhe:   (id)          => apiFetch(`/api/vistorias/${id}`),
   criar:     (body)        => apiFetch('/api/vistorias', { method: 'POST', body: JSON.stringify(body) }),
   finalizar: (id)          => apiFetch(`/api/vistorias/${id}/finalizar`, { method: 'PATCH' }),
-  publicar:  (id)          => apiFetch(`/api/vistorias/${id}/publicar`,  { method: 'PATCH' })
+  publicar:  (id)          => apiFetch(`/api/vistorias/${id}/publicar`,  { method: 'PATCH' }),
+  reabrir:   (id)          => apiFetch(`/api/vistorias/${id}/reabrir`,   { method: 'PATCH' })
 };
 
 // ── Ocorrências ────────────────────────────────────────────────

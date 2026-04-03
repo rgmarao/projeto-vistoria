@@ -255,6 +255,7 @@
         acoes.innerHTML = `
           <button class="btn btn-ghost-secondary" onclick="baixarPDF()">⬇ PDF Completo</button>
           <button class="btn btn-ghost-danger" onclick="baixarPDFPendencias()">⬇ Pendências</button>
+          <button class="btn btn-outline-warning" onclick="reabrir()">↩ Reabrir</button>
           <button class="btn btn-success" onclick="publicar()">Publicar</button>`;
       } else if (vis.status === 'publicada') {
         acoes.innerHTML = `
@@ -464,6 +465,11 @@
     window.finalizar = async () => {
       if (!confirm('Finalizar esta vistoria? Não será mais possível editar ocorrências.')) return;
       try { await vistorias.finalizar(visId); carregar(); }
+      catch (err) { alert(err.message); }
+    };
+    window.reabrir = async () => {
+      if (!confirm('Reabrir esta vistoria para edição? Ela voltará ao status "Em andamento".')) return;
+      try { await vistorias.reabrir(visId); carregar(); }
       catch (err) { alert(err.message); }
     };
     window.publicar = async () => {

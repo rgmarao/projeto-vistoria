@@ -426,4 +426,51 @@ router.patch('/:id/publicar', requireAuth, async (req, res) => {
   }
 });
 
+// PATCH /api/vistorias/:id/reabrir
+// Muda status de "finalizada" para "em_andamento"
+// Perfil: admin | analista
+// ─────────────────────────────────────────
+router.patch('/:id/reabrir', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const { data: perfil, error: perfilError } = await supabase
+      .from('perfis')
+      .select('perfil')
+      .eq('id', req.user.id)
+      .single();
+
+    if (perfilError || !['admin', 'analista'].includes(perfil?.perfil)) {
+      return res.status(403).json({ error: 'Sem permissão para reabrir vistorias' });
+    }
+
+    const { data: vistoria } = await supabase
+      .from('vistorias')
+      .select('status')
+      .eq('id', id)
+      .single();
+
+    if (!vistoria) {
+      return res.status(404).json({ error: 'Vistoria não encontrada' });
+    }
+
+    if (vistoria.status !== 'finalizada') {
+      return res.status(400).json({ error: `Vistoria não pode ser reaberta — status atual: ${vistoria.status}` });
+    }
+
+    const { error } = await supabase
+      .from('vistorias')
+      .update({ status: 'em_andamento', atualizado_em: new Date().toISOString() })
+      .eq('id', id);
+
+    if (error) return res.status(400).json({ error: error.message });
+
+    return res.json({ ok: true, message: 'Vistoria reaberta com sucesso' });
+
+  } catch (err) {
+    console.error('Erro ao reabrir vistoria:', err);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
 export default router;

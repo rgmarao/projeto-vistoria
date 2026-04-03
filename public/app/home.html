@@ -214,7 +214,7 @@
               <div class="draft-acoes">
                 ${v.status === 'rascunho'
                   ? `<button class="btn-continuar" onclick="continuarVistoria('${v.local_id}')">Continuar</button>`
-                  : ''}
+                  : `<button class="btn-continuar" style="background:#fff3e0;color:#e65100;border-color:#ffcc80" onclick="reabrirVistoria('${v.local_id}')">↩ Reabrir</button>`}
                 <button class="btn-excluir" onclick="excluirRascunho('${v.local_id}')">🗑</button>
               </div>
             </div>`;
@@ -244,6 +244,16 @@
 
     window.continuarVistoria = (local_id) => {
       window.location.href = '/app/vistoria.html?local_id=' + local_id;
+    };
+
+    window.reabrirVistoria = async (local_id) => {
+      if (!await dialogo('Reabrir esta vistoria para edição?', { cancelar: true })) return;
+      const v = await db.getVistoria(local_id);
+      if (!v) return;
+      v.status     = 'rascunho';
+      v.updated_at = new Date().toISOString();
+      await db.salvarVistoria(v);
+      carregarRascunhos();
     };
 
     window.excluirRascunho = async (local_id) => {
