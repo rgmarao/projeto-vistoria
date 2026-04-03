@@ -511,16 +511,14 @@
 
   <!-- Custom dialog -->
   <div id="app-dialog" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.4);align-items:center;justify-content:center;padding:24px">
-    <div class="modal-dialog modal-dialog-centered" style="margin:0;max-width:400px;width:100%">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">VistorIA</h5>
-        </div>
-        <div class="modal-body">
-          <div id="dialog-msg" style="white-space:pre-line"></div>
-        </div>
-        <div class="modal-footer" id="dialog-btns"></div>
+    <div style="background:#fff;border-radius:8px;box-shadow:0 4px 24px rgba(0,0,0,.25);max-width:420px;width:100%;overflow:hidden">
+      <div style="padding:16px 20px;border-bottom:1px solid #e8eaf0">
+        <h5 style="margin:0;font-size:15px;font-weight:700;color:#1b3a6b">VistorIA</h5>
       </div>
+      <div style="padding:16px 20px">
+        <div id="dialog-msg" style="font-size:14px;color:#333;line-height:1.5;white-space:pre-line"></div>
+      </div>
+      <div id="dialog-btns" style="padding:12px 20px;display:flex;justify-content:flex-end;gap:8px;border-top:1px solid #e8eaf0"></div>
     </div>
   </div>
 
