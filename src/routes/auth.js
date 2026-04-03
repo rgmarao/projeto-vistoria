@@ -25,12 +25,19 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: error.message });
     }
 
+    const { data: perfil } = await supabase
+      .from('perfis')
+      .select('nome, perfil')
+      .eq('id', data.user.id)
+      .single();
+
     return res.json({
       message: '✅ Login realizado com sucesso',
       user: {
-        id: data.user.id,
+        id:    data.user.id,
         email: data.user.email,
-        role: data.user.user_metadata?.role || 'vistoriador'
+        nome:  perfil?.nome  || null,
+        role:  perfil?.perfil || data.user.user_metadata?.role || 'vistoriador'
       },
       token: data.session.access_token
     });
@@ -67,11 +74,18 @@ router.post('/logout', requireAuth, async (req, res) => {
 // ─────────────────────────────────────────
 router.get('/me', requireAuth, async (req, res) => {
   try {
+    const { data: perfil } = await supabase
+      .from('perfis')
+      .select('nome, perfil')
+      .eq('id', req.user.id)
+      .single();
+
     return res.json({
       user: {
-        id: req.user.id,
+        id:    req.user.id,
         email: req.user.email,
-        role: req.user.user_metadata?.role || 'vistoriador'
+        nome:  perfil?.nome  || null,
+        role:  perfil?.perfil || req.user.user_metadata?.role || 'vistoriador'
       }
     });
 
