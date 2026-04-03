@@ -309,7 +309,7 @@
       for (const area of v.areas || []) {
         for (const item of area.itens || []) {
           for (const oc of item.ocorrencias || []) {
-            if (!oc.situacao) continue; // não avaliado → pula
+            if (!oc.situacao && !oc.descricao?.trim() && !oc.foto1 && !oc.foto2) continue; // vazio → pula
 
             const rOc = await fetch(`/api/vistorias/${visId}/ocorrencias`, {
               method: 'POST', headers,
