@@ -5,25 +5,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="theme-color" content="#1565c0" />
-  <title>Vistoria — Início</title>
+  <meta name="theme-color" content="#1b3a6b" />
+  <title>VistorIA</title>
   <link rel="manifest" href="/manifest.json" />
   <link rel="stylesheet" href="/app/app.css" />
 </head>
 <body>
 
   <header class="app-header">
-    <div>
-      <h1>🏗️ Vistoria Online</h1>
-      <div class="sub" id="user-nome"></div>
+    <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
+      <img src="/img/logo-vistoria.png" alt="VistorIA"
+        style="height:30px;width:auto;flex-shrink:0;filter:brightness(0) invert(1)" />
+      <div class="sub" id="user-nome" style="font-size:13px;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
     </div>
-    <div style="display:flex;align-items:center;gap:12px">
+    <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
       <span id="conn-badge" title="Status de conexão"></span>
       <button onclick="limparCache()"
-        style="background:none;border:none;color:rgba(255,255,255,.6);font-size:13px;cursor:pointer;padding:2px 6px;border:1px solid rgba(255,255,255,.3);border-radius:6px"
+        style="background:none;border:1px solid rgba(255,255,255,.3);color:rgba(255,255,255,.7);font-size:12px;cursor:pointer;padding:3px 8px;border-radius:6px"
         title="Limpar dados locais">🗑 Cache</button>
       <button onclick="logout()"
-        style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;padding:0"
+        style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;padding:0;line-height:1"
         title="Sair">⏻</button>
     </div>
   </header>
@@ -61,7 +62,7 @@
     }
 
     const user = getUser();
-    document.getElementById('user-nome').textContent = user?.nome || user?.email || '';
+    document.getElementById('user-nome').textContent = user?.nome || '';
 
     // ── Indicador de conexão ──────────────────────────────────
     function atualizarConexao() {
@@ -191,7 +192,21 @@
     }
 
     // ── Ações de navegação ────────────────────────────────────
-    window.novaVistoria = (unidade_id, nome, empresa) => {
+    window.novaVistoria = async (unidade_id, nome, empresa) => {
+      // Alerta se já existe vistoria desta unidade criada hoje
+      const hoje = new Date().toDateString();
+      const todas = await db.listarVistorias();
+      const duplicata = todas.find(v =>
+        v.unidade_id === unidade_id &&
+        v.status !== 'sincronizado' &&
+        new Date(v.created_at).toDateString() === hoje
+      );
+      if (duplicata) {
+        const continuar = confirm(
+          `⚠️ Já existe uma vistoria em andamento para "${nome}" criada hoje.\n\nDeseja criar uma nova mesmo assim?`
+        );
+        if (!continuar) return;
+      }
       const p = new URLSearchParams({ unidade_id, nome, empresa });
       window.location.href = '/app/vistoria.html?' + p;
     };

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="theme-color" content="#1565c0" />
+  <meta name="theme-color" content="#1b3a6b" />
   <title>Vistoria</title>
   <link rel="manifest" href="/manifest.json" />
   <link rel="stylesheet" href="/app/app.css" />
@@ -75,15 +75,11 @@
 <body>
 
   <header class="app-header">
-    <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
-      <button onclick="history.back()"
-        style="background:none;border:none;color:#fff;font-size:24px;cursor:pointer;padding:0;line-height:1;flex-shrink:0">
-        ‹
-      </button>
-      <div style="min-width:0">
-        <h1 style="font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" id="h-titulo">Carregando...</h1>
-        <div class="sub" id="h-sub"></div>
-      </div>
+    <img src="/img/logo-vistoria.png" alt="VistorIA"
+      style="height:28px;width:auto;flex-shrink:0;filter:brightness(0) invert(1)" />
+    <div style="flex:1;min-width:0;text-align:right;padding-left:10px">
+      <div style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" id="h-titulo">Carregando...</div>
+      <div class="sub" id="h-sub"></div>
     </div>
     <span id="auto-save-ind"
       style="color:rgba(255,255,255,.7);font-size:12px;flex-shrink:0;margin-left:8px;transition:opacity .3s;opacity:0">
@@ -194,7 +190,8 @@
       }
 
       document.getElementById('h-titulo').textContent = vistoria.unidade_nome;
-      document.getElementById('h-sub').textContent    = vistoria.empresa_nome || '';
+      document.getElementById('h-sub').textContent =
+        new Date(vistoria.created_at).toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' });
       renderTudo();
     }
 
@@ -264,7 +261,7 @@
               onchange="setDescricao(${ai},${ii},${oi},this.value)">${oc.descricao || ''}</textarea>
           </div>
           <div class="rec-field ${recVisivel ? 'visivel' : ''}" id="rec-${ai}-${ii}-${oi}">
-            <span class="field-label">Recomendação</span>
+            <span class="field-label">Recomendações</span>
             <textarea class="obs-input" rows="2"
               placeholder="O que deve ser feito para corrigir..."
               onchange="setRecomendacao(${ai},${ii},${oi},this.value)">${oc.recomendacao || ''}</textarea>
