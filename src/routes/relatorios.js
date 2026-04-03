@@ -8,37 +8,44 @@ import { requireAuth } from '../middlewares/auth.js';
 
 const router = express.Router();
 
-// ── Dimensões e constantes de layout ─────────────────────────────────────────
-const PAGE_W    = 595.28;
-const PAGE_H    = 841.89;
-const M         = 50;          // margem lateral
-const HDR_H     = 72;          // altura do cabeçalho repetido
-const FTR_H     = 28;          // altura do rodapé repetido
-const CONT_X    = M;
-const CONT_W    = PAGE_W - M * 2;
-const BODY_TOP  = HDR_H + 14;  // top margin do conteúdo
-const BODY_BOT  = PAGE_H - FTR_H - 14; // limite inferior do conteúdo
+// ── Dimensões de página (A4 em pontos) ───────────────────────────────────────
+const PAGE_W   = 595.28;
+const PAGE_H   = 841.89;
+const M        = 45;           // margens laterais
+const HDR_H    = 75;           // altura reservada para cabeçalho
+const FTR_H    = 30;           // altura reservada para rodapé
+const CONT_X   = M;
+const CONT_W   = PAGE_W - M * 2;
+const BODY_TOP = HDR_H + 12;
+const BODY_BOT = PAGE_H - FTR_H - 10;
 
-// Colunas da ocorrência
-const L_W  = 185;  // largura da coluna de texto
-const GAP  = 14;
-const R_X  = CONT_X + L_W + GAP;
-const R_W  = CONT_W - L_W - GAP;  // largura da coluna de fotos ≈ 246pt
+// Colunas para o bloco de ocorrência
+const PHOTO_W  = 113;          // ≈ 4 cm por foto
+const PHOTO_GAP = 7;           // gap entre as duas fotos
+const TXT_GAP  = 12;           // gap entre texto e fotos
+const TXT_W    = CONT_W - PHOTO_W * 2 - PHOTO_GAP - TXT_GAP;  // ≈ 249 pt
+const P1_X     = CONT_X + TXT_W + TXT_GAP;
+const P2_X     = P1_X + PHOTO_W + PHOTO_GAP;
+const PHOTO_H  = 150;          // altura máxima de cada foto (fit preserva proporção)
+const STRIP_H  = 16;           // altura da tarja de ocorrência
 
 // Cores
-const NAVY  = '#1b3a6b';
-const BLUE  = '#1565c0';
-const RED   = '#c62828';
-const MUTED = '#888888';
-const SUB   = '#555555';
-const TEXT  = '#222222';
-const C_OK  = '#388e3c';
-const C_AT  = '#f57c00';
-const C_CR  = '#d32f2f';
+const NAVY    = '#1b3a6b';
+const BLUE    = '#1565c0';
+const RED     = '#c62828';
+const TEXT    = '#1a1a1a';
+const MUTED   = '#666666';
+const C_OK    = '#388e3c';
+const C_AT    = '#e65100';
+const C_CR    = '#c62828';
+const BG_OK   = '#e8f5e9';
+const BG_AT   = '#fff3e0';
+const BG_CR   = '#ffebee';
 
-const OC_STATUS_COLOR = { ok: C_OK, atencao: C_AT, critico: C_CR };
-const OC_STATUS_LABEL = { ok: 'OK', atencao: 'Atenção', critico: 'Crítico' };
-const STATUS_LABEL    = { em_andamento: 'Em andamento', finalizada: 'Finalizada', publicada: 'Publicada' };
+const OC_STATUS_COLOR  = { ok: C_OK,  atencao: C_AT,  critico: C_CR  };
+const OC_STRIP_BG      = { ok: BG_OK, atencao: BG_AT, critico: BG_CR };
+const OC_STATUS_SUFFIX = { ok: '', atencao: ' - ATENÇÃO', critico: ' - CRÍTICO' };
+const STATUS_LABEL     = { em_andamento: 'Em andamento', finalizada: 'Finalizada', publicada: 'Publicada' };
 
 // ── Logo VistorIA (fallback) ──────────────────────────────────────────────────
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -55,97 +62,92 @@ async function fetchImageBuffer(url) {
   } catch { return null; }
 }
 
-function hline(doc, y, color = '#e0e0e0', w = 0.5) {
-  doc.save().moveTo(CONT_X, y).lineTo(CONT_X + CONT_W, y)
-     .strokeColor(color).lineWidth(w).stroke().restore();
+function hline(doc, y, color = '#cccccc', w = 0.75) {
+  doc.save()
+     .moveTo(CONT_X, y).lineTo(CONT_X + CONT_W, y)
+     .strokeColor(color).lineWidth(w).stroke()
+     .restore();
 }
 
 // ── Cabeçalho de página ───────────────────────────────────────────────────────
 function drawHeader(doc, { logoBuf, empresa, unidade, dataVistoria, analista }) {
-  const Y = 16;
+  const LOGO_Y = 14;
+  const LOGO_H = 42;
+  const LOGO_W = 120;
+
   if (logoBuf) {
-    try { doc.image(logoBuf, CONT_X, Y, { fit: [110, 38], align: 'left', valign: 'center' }); }
+    try { doc.image(logoBuf, CONT_X, LOGO_Y, { fit: [LOGO_W, LOGO_H], align: 'left', valign: 'center' }); }
     catch { /* logo inválido */ }
   }
 
-  const tx = CONT_X + 120;
-  const tw = CONT_W - 120;
-  let ty = Y;
+  // Bloco de texto à direita — tudo em TEXT (preto), espaçamento generoso
+  const tx = CONT_X + LOGO_W + 10;
+  const tw = CONT_W - LOGO_W - 10;
 
-  if (empresa) {
-    doc.font('Helvetica-Bold').fontSize(9).fillColor(NAVY)
-       .text(empresa, tx, ty, { width: tw, align: 'right' });
-    ty += 12;
-  }
+  // Empresa: bold, navy
+  doc.font('Helvetica-Bold').fontSize(9.5).fillColor(NAVY)
+     .text(empresa || '', tx, LOGO_Y, { width: tw, align: 'right' });
+
+  // Unidade, data, analista: regular, preto, 1.5× espaçamento
+  const lineH = 13;
   doc.font('Helvetica').fontSize(8.5).fillColor(TEXT)
-     .text(unidade, tx, ty, { width: tw, align: 'right' });
-  ty += 11;
-  doc.font('Helvetica').fontSize(7.5).fillColor(MUTED)
-     .text(`Data: ${dataVistoria}`, tx, ty, { width: tw, align: 'right' });
-  ty += 10;
+     .text(unidade, tx, LOGO_Y + 14, { width: tw, align: 'right' });
+  doc.font('Helvetica').fontSize(8.5).fillColor(TEXT)
+     .text(`Data: ${dataVistoria}`, tx, LOGO_Y + 14 + lineH, { width: tw, align: 'right' });
   if (analista) {
-    doc.font('Helvetica').fontSize(7.5).fillColor(MUTED)
-       .text(`Analista: ${analista}`, tx, ty, { width: tw, align: 'right' });
+    doc.font('Helvetica').fontSize(8.5).fillColor(TEXT)
+       .text(`Analista: ${analista}`, tx, LOGO_Y + 14 + lineH * 2, { width: tw, align: 'right' });
   }
-  hline(doc, HDR_H, NAVY, 1);
+
+  hline(doc, HDR_H, NAVY, 1.2);
 }
 
 // ── Rodapé de página ──────────────────────────────────────────────────────────
-function drawFooter(doc, pageNum, total, subtitle) {
+function drawFooter(doc, pageNum, total) {
   const y = PAGE_H - FTR_H;
-  hline(doc, y, '#cccccc', 0.5);
-  doc.font('Helvetica').fontSize(7.5).fillColor(MUTED)
-     .text(subtitle, CONT_X, y + 7, { width: CONT_W * 0.65, align: 'left' });
-  doc.font('Helvetica').fontSize(7.5).fillColor(MUTED)
-     .text(`Pág. ${pageNum} de ${total}`, CONT_X, y + 7, { width: CONT_W, align: 'right' });
+  hline(doc, y, NAVY, 1.2);
+  doc.font('Helvetica').fontSize(8).fillColor(TEXT)
+     .text(`Página ${pageNum} de ${total}`, CONT_X, y + 8, { width: CONT_W, align: 'right' });
 }
 
-function applyHeaderFooter(doc, headerData, subtitle) {
+function applyHeaderFooter(doc, headerData) {
   const range = doc.bufferedPageRange();
   for (let i = 0; i < range.count; i++) {
     doc.switchToPage(range.start + i);
     drawHeader(doc, headerData);
-    drawFooter(doc, i + 1, range.count, subtitle);
+    drawFooter(doc, i + 1, range.count);
   }
 }
 
-// ── Busca e prepara buffers de fotos ─────────────────────────────────────────
+// ── Busca fotos ───────────────────────────────────────────────────────────────
 async function prepFotos(ocorrencias) {
-  return Promise.all(
-    (ocorrencias || []).map(async oc => {
-      let foto1buf = null, foto2buf = null;
-      if (oc.foto_1_url) {
-        const { data: s } = await supabase.storage.from('fotos').createSignedUrl(oc.foto_1_url, 300);
-        if (s?.signedUrl) foto1buf = await fetchImageBuffer(s.signedUrl);
-      }
-      if (oc.foto_2_url) {
-        const { data: s } = await supabase.storage.from('fotos').createSignedUrl(oc.foto_2_url, 300);
-        if (s?.signedUrl) foto2buf = await fetchImageBuffer(s.signedUrl);
-      }
-      return { ...oc, foto1buf, foto2buf };
-    })
-  );
+  return Promise.all((ocorrencias || []).map(async oc => {
+    let foto1buf = null, foto2buf = null;
+    if (oc.foto_1_url) {
+      const { data: s } = await supabase.storage.from('fotos').createSignedUrl(oc.foto_1_url, 300);
+      if (s?.signedUrl) foto1buf = await fetchImageBuffer(s.signedUrl);
+    }
+    if (oc.foto_2_url) {
+      const { data: s } = await supabase.storage.from('fotos').createSignedUrl(oc.foto_2_url, 300);
+      if (s?.signedUrl) foto2buf = await fetchImageBuffer(s.signedUrl);
+    }
+    return { ...oc, foto1buf, foto2buf };
+  }));
 }
 
-// ── Busca estrutura agrupada: areas → itens → ocorrências ────────────────────
+// ── Busca estrutura agrupada ──────────────────────────────────────────────────
 async function fetchEstrutura(visId, unidadeId, filtro = null) {
-  // Áreas com itens
   const { data: areas } = await supabase
     .from('areas')
     .select('id, nome, ordem, area_itens(id, item_id, ordem, itens_verificacao(id, descricao))')
-    .eq('unidade_id', unidadeId)
-    .eq('ativo', true)
-    .order('ordem');
+    .eq('unidade_id', unidadeId).eq('ativo', true).order('ordem');
 
-  // Ocorrências flat
-  let query = supabase.from('ocorrencias').select('*').eq('vistoria_id', visId).order('numero_ocorrencia');
-  if (filtro) query = query.in('status', filtro);
-  const { data: ocs } = await query;
+  let q = supabase.from('ocorrencias').select('*').eq('vistoria_id', visId).order('numero_ocorrencia');
+  if (filtro) q = q.in('status', filtro);
+  const { data: ocs } = await q;
 
-  // Prepara fotos
   const ocsComFotos = await prepFotos(ocs || []);
 
-  // Indexa por area_id + item_id
   const ocMap = {};
   for (const oc of ocsComFotos) {
     const k = `${oc.area_id}_${oc.item_id}`;
@@ -153,10 +155,10 @@ async function fetchEstrutura(visId, unidadeId, filtro = null) {
     ocMap[k].push(oc);
   }
 
-  // Monta estrutura hierárquica
   return (areas || []).map(area => ({
-    area_id:   area.id,
-    area_nome: area.nome,
+    area_id:    area.id,
+    area_nome:  area.nome,
+    area_ordem: area.ordem,
     itens: (area.area_itens || [])
       .sort((a, b) => a.ordem - b.ordem)
       .map(ai => ({
@@ -164,95 +166,88 @@ async function fetchEstrutura(visId, unidadeId, filtro = null) {
         descricao: ai.itens_verificacao?.descricao || '',
         ocs:       ocMap[`${area.id}_${ai.item_id}`] || []
       }))
-      .filter(item => item.ocs.length > 0)  // só itens com ocorrências
-  })).filter(area => area.itens.length > 0); // só áreas com itens
+      .filter(item => item.ocs.length > 0)
+  })).filter(area => area.itens.length > 0);
 }
 
-// ── Renderiza uma ocorrência: texto esquerda, fotos direita ──────────────────
+// ── Renderiza uma ocorrência ──────────────────────────────────────────────────
 function renderOc(doc, oc) {
-  const color    = OC_STATUS_COLOR[oc.status] || '#aaaaaa';
-  const fotos    = [oc.foto1buf, oc.foto2buf].filter(Boolean);
-  const FOTO_H   = 160; // altura máxima de cada foto (fit preserva proporção)
-  const estimH   = Math.max(
-    70 + (oc.recomendacao && ['atencao','critico'].includes(oc.status) ? 50 : 0),
-    fotos.length * (FOTO_H + 8)
-  );
+  const color    = OC_STATUS_COLOR[oc.status] || MUTED;
+  const stripBg  = OC_STRIP_BG[oc.status]    || '#f5f5f5';
+  const suffix   = OC_STATUS_SUFFIX[oc.status] ?? '';
+  const ocLabel  = `OCORRÊNCIA ${oc.numero_ocorrencia}${suffix}`;
+  const hasRec   = oc.recomendacao && ['atencao', 'critico'].includes(oc.status);
 
-  if (doc.y + estimH + 20 > BODY_BOT) doc.addPage();
+  // Estima altura mínima: tarja + algum texto + foto
+  const minH = STRIP_H + PHOTO_H + 30;
+  if (doc.y + minH > BODY_BOT) doc.addPage();
 
-  const startY = doc.y;
+  // ── Tarja colorida (largura total) ────────────────────────────────────────
+  const stripY = doc.y;
+  doc.rect(CONT_X, stripY, CONT_W, STRIP_H).fill(stripBg);
+  doc.font('Helvetica-Bold').fontSize(8.5).fillColor(color)
+     .text(ocLabel, CONT_X + 6, stripY + (STRIP_H - 8.5) / 2, { width: CONT_W - 12 });
 
-  // ── Coluna esquerda ────────────────────────────────────────
-  // "OCORRÊNCIA N" com cor do status
-  doc.font('Helvetica').fontSize(9).fillColor(color)
-     .text(`OCORRÊNCIA ${oc.numero_ocorrencia}`, CONT_X, startY, { width: L_W });
+  const contentY = stripY + STRIP_H + 8;
 
-  let ty = startY + 14;
-
+  // ── Coluna de texto (esquerda) ────────────────────────────────────────────
   // Rótulo "Descrição"
-  doc.font('Helvetica-Bold').fontSize(8).fillColor(MUTED)
-     .text('Descrição', CONT_X, ty, { width: L_W });
-  ty += 11;
+  doc.font('Helvetica-Bold').fontSize(8.5).fillColor(MUTED)
+     .text('Descrição', CONT_X, contentY, { width: TXT_W });
+  let ty = contentY + 12; // pequeno espaçamento abaixo do rótulo
 
   if (oc.descricao) {
-    doc.font('Helvetica').fontSize(9).fillColor(TEXT)
-       .text(oc.descricao, CONT_X, ty, { width: L_W });
-    ty = doc.y + 6;
+    doc.font('Helvetica').fontSize(9.5).fillColor(TEXT)
+       .text(oc.descricao, CONT_X, ty, { width: TXT_W, lineGap: 2 });
+    ty = doc.y;
   }
 
-  if (oc.recomendacao && ['atencao', 'critico'].includes(oc.status)) {
-    doc.font('Helvetica-Bold').fontSize(8).fillColor(MUTED)
-       .text('Recomendações', CONT_X, ty, { width: L_W });
-    ty += 11;
-    doc.font('Helvetica').fontSize(9).fillColor(TEXT)
-       .text(oc.recomendacao, CONT_X, ty, { width: L_W });
-    ty = doc.y + 4;
+  if (hasRec) {
+    ty += 8; // espaço entre descrição e rótulo recomendações
+    doc.font('Helvetica-Bold').fontSize(8.5).fillColor(MUTED)
+       .text('Recomendações', CONT_X, ty, { width: TXT_W });
+    ty += 12; // pequeno espaçamento abaixo do rótulo
+    doc.font('Helvetica').fontSize(9.5).fillColor(TEXT)
+       .text(oc.recomendacao, CONT_X, ty, { width: TXT_W, lineGap: 2 });
+    ty = doc.y;
   }
 
-  const leftEnd = ty;
+  const leftEnd = ty + 8;
 
-  // ── Coluna direita: fotos ──────────────────────────────────
-  // Quadrado colorido de status no canto superior direito
-  doc.rect(R_X + R_W - 12, startY + 1, 11, 11).fill(color);
-
-  let photoY = startY;
-  for (const buf of fotos) {
-    if (photoY + FOTO_H > BODY_BOT) {
-      doc.addPage();
-      photoY = BODY_TOP;
-    }
-    try {
-      doc.image(buf, R_X, photoY, { fit: [R_W, FOTO_H] });
-    } catch { /* foto inválida */ }
-    photoY += FOTO_H + 8;
+  // ── Fotos lado a lado (colunas direita) ───────────────────────────────────
+  if (oc.foto1buf) {
+    try { doc.image(oc.foto1buf, P1_X, contentY, { fit: [PHOTO_W, PHOTO_H] }); } catch { /* ignore */ }
+  }
+  if (oc.foto2buf) {
+    try { doc.image(oc.foto2buf, P2_X, contentY, { fit: [PHOTO_W, PHOTO_H] }); } catch { /* ignore */ }
   }
 
-  // Avança cursor para abaixo da coluna mais longa
-  const endY = Math.max(leftEnd, photoY) + 10;
+  // Avança para abaixo da coluna mais longa
+  const photoEnd = (oc.foto1buf || oc.foto2buf) ? contentY + PHOTO_H + 8 : contentY;
+  const endY     = Math.max(leftEnd, photoEnd) + 10;
+
   doc.text('', CONT_X, endY);
-  hline(doc, doc.y, '#e8eaf0', 0.5);
-  doc.moveDown(0.6);
+  doc.moveDown(0.3);
 }
 
-// ── Renderiza estrutura completa de áreas → itens → ocorrências ──────────────
+// ── Renderiza estrutura completa ──────────────────────────────────────────────
 function renderEstrutura(doc, estrutura) {
   for (const area of estrutura) {
-    // Nova página se espaço insuficiente para cabeçalho de área
-    if (doc.y + 60 > BODY_BOT) doc.addPage();
+    if (doc.y + 55 > BODY_BOT) doc.addPage();
 
-    // ── Cabeçalho de área ──────────────────────────────────────
-    hline(doc, doc.y, NAVY, 1.5);
-    doc.moveDown(0.4);
-    doc.font('Helvetica-Bold').fontSize(11).fillColor(NAVY)
-       .text(area.area_nome.toUpperCase(), CONT_X, doc.y, { width: CONT_W });
-    doc.moveDown(0.6);
+    // Área: numerada, navy, bold, maior
+    const numArea = String(area.area_ordem || '').padStart(2, '0');
+    const tituloArea = `${numArea} - ${area.area_nome.toUpperCase()}`;
+    doc.font('Helvetica-Bold').fontSize(13).fillColor(NAVY)
+       .text(tituloArea, CONT_X, doc.y, { width: CONT_W });
+    doc.moveDown(0.5);
 
     for (const item of area.itens) {
-      if (doc.y + 40 > BODY_BOT) doc.addPage();
+      if (doc.y + 35 > BODY_BOT) doc.addPage();
 
-      // ── Item de verificação ────────────────────────────────
+      // Item: uppercase, bold, preto
       doc.font('Helvetica-Bold').fontSize(10).fillColor(TEXT)
-         .text(item.descricao, CONT_X, doc.y, { width: CONT_W });
+         .text(item.descricao.toUpperCase(), CONT_X, doc.y, { width: CONT_W });
       doc.moveDown(0.5);
 
       for (const oc of item.ocs) renderOc(doc, oc);
@@ -260,19 +255,19 @@ function renderEstrutura(doc, estrutura) {
       doc.moveDown(0.4);
     }
 
-    doc.moveDown(0.6);
+    doc.moveDown(0.8);
   }
 }
 
-// ── Ficha de cabeçalho da vistoria (primeira página) ─────────────────────────
+// ── Ficha de dados (capa) ─────────────────────────────────────────────────────
 function renderFicha(doc, fields) {
   for (const [label, valor] of fields) {
-    if (!valor) continue;
+    if (valor == null) continue;
     const y = doc.y;
-    doc.font('Helvetica-Bold').fontSize(9).fillColor(MUTED)
-       .text(label, CONT_X, y, { width: 160 });
-    doc.font('Helvetica').fontSize(9).fillColor(TEXT)
-       .text(String(valor), CONT_X + 165, y, { width: CONT_W - 165 });
+    doc.font('Helvetica-Bold').fontSize(10).fillColor(TEXT)
+       .text(label, CONT_X, y, { width: 165 });
+    doc.font('Helvetica').fontSize(10).fillColor(TEXT)
+       .text(String(valor), CONT_X + 170, y, { width: CONT_W - 170 });
   }
 }
 
@@ -295,12 +290,11 @@ router.get('/vistorias/:id/pdf', requireAuth, async (req, res) => {
     if (perfil.perfil === 'usuario' && data.status !== 'publicada')
       return res.status(403).json({ error: 'Acesso negado' });
 
-    const unidade     = data.unidades;
-    const empresa     = unidade?.empresas;
-    const analista    = data.perfis;
+    const unidade      = data.unidades;
+    const empresa      = unidade?.empresas;
+    const analista     = data.perfis;
     const dataVistoria = data.data_criacao ? new Date(data.data_criacao).toLocaleDateString('pt-BR') : '—';
 
-    // Logo
     let logoBuf = vistoriaLogoBuf;
     if (unidade?.logo_url) {
       const { data: s } = await supabase.storage.from('logos').createSignedUrl(unidade.logo_url, 300);
@@ -319,22 +313,22 @@ router.get('/vistorias/:id/pdf', requireAuth, async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename="vistoria-${id.slice(0, 8)}.pdf"`);
     doc.pipe(res);
 
-    // ── Título e ficha ──────────────────────────────────────────────────────
-    doc.font('Helvetica-Bold').fontSize(18).fillColor(NAVY)
+    // ── Capa ────────────────────────────────────────────────────────────────
+    doc.font('Helvetica-Bold').fontSize(20).fillColor(NAVY)
        .text('Relatório de Vistoria', { align: 'center' });
-    doc.moveDown(0.3);
-    hline(doc, doc.y, NAVY, 2);
-    doc.moveDown(0.8);
+    doc.moveDown(0.4);
+    hline(doc, doc.y, NAVY, 1.5);
+    doc.moveDown(1);
 
     doc.font('Helvetica-Bold').fontSize(14).fillColor(TEXT)
        .text(unidade?.nome || '—', { align: 'center' });
     if (empresa?.nome) {
-      doc.font('Helvetica').fontSize(11).fillColor(SUB).text(empresa.nome, { align: 'center' });
+      doc.font('Helvetica').fontSize(11).fillColor(TEXT).text(empresa.nome, { align: 'center' });
     }
     if (unidade?.endereco) {
       doc.font('Helvetica').fontSize(9).fillColor(MUTED).text(unidade.endereco, { align: 'center' });
     }
-    doc.moveDown(1.2);
+    doc.moveDown(1.5);
 
     renderFicha(doc, [
       ['Data da vistoria:',     dataVistoria],
@@ -342,25 +336,22 @@ router.get('/vistorias/:id/pdf', requireAuth, async (req, res) => {
       ['Total de ocorrências:', String(totalOcs)]
     ]);
 
-    doc.moveDown(1);
-    hline(doc, doc.y, '#cccccc', 1);
-    doc.moveDown(1);
+    doc.moveDown(1.5);
+    hline(doc, doc.y, '#bbbbbb', 0.75);
+    doc.moveDown(1.5);
 
-    // ── Corpo: áreas → itens → ocorrências ─────────────────────────────────
+    // ── Corpo ────────────────────────────────────────────────────────────────
     if (estrutura.length === 0) {
       doc.font('Helvetica').fontSize(11).fillColor(MUTED).text('Nenhuma ocorrência registrada.');
     } else {
       renderEstrutura(doc, estrutura);
     }
 
-    // ── Cabeçalho + rodapé em todas as páginas ──────────────────────────────
-    applyHeaderFooter(doc,
-      { logoBuf, empresa: empresa?.nome, unidade: unidade?.nome || '—', dataVistoria, analista: analista?.nome },
-      `Relatório de Vistoria · ${new Date().toLocaleDateString('pt-BR')}`
-    );
-
+    // ── Cabeçalho + rodapé ───────────────────────────────────────────────────
+    applyHeaderFooter(doc, { logoBuf, empresa: empresa?.nome, unidade: unidade?.nome || '—', dataVistoria, analista: analista?.nome });
     doc.flushPages();
     doc.end();
+
   } catch (err) {
     console.error('Erro ao gerar PDF:', err);
     if (!res.headersSent) res.status(500).json({ error: 'Erro ao gerar relatório PDF' });
@@ -409,21 +400,21 @@ router.get('/vistorias/:id/pdf/pendencias', requireAuth, async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename="pendencias-${id.slice(0, 8)}.pdf"`);
     doc.pipe(res);
 
-    doc.font('Helvetica-Bold').fontSize(18).fillColor(RED)
+    doc.font('Helvetica-Bold').fontSize(20).fillColor(RED)
        .text('Relatório de Pendências', { align: 'center' });
-    doc.moveDown(0.3);
-    hline(doc, doc.y, RED, 2);
-    doc.moveDown(0.8);
+    doc.moveDown(0.4);
+    hline(doc, doc.y, RED, 1.5);
+    doc.moveDown(1);
 
     doc.font('Helvetica-Bold').fontSize(14).fillColor(TEXT)
        .text(unidade?.nome || '—', { align: 'center' });
     if (empresa?.nome) {
-      doc.font('Helvetica').fontSize(11).fillColor(SUB).text(empresa.nome, { align: 'center' });
+      doc.font('Helvetica').fontSize(11).fillColor(TEXT).text(empresa.nome, { align: 'center' });
     }
     if (unidade?.endereco) {
       doc.font('Helvetica').fontSize(9).fillColor(MUTED).text(unidade.endereco, { align: 'center' });
     }
-    doc.moveDown(1.2);
+    doc.moveDown(1.5);
 
     renderFicha(doc, [
       ['Data da vistoria:',     dataVistoria],
@@ -431,9 +422,9 @@ router.get('/vistorias/:id/pdf/pendencias', requireAuth, async (req, res) => {
       ['Total de pendências:',  String(totalPend)]
     ]);
 
-    doc.moveDown(1);
-    hline(doc, doc.y, '#cccccc', 1);
-    doc.moveDown(1);
+    doc.moveDown(1.5);
+    hline(doc, doc.y, '#bbbbbb', 0.75);
+    doc.moveDown(1.5);
 
     if (estrutura.length === 0) {
       doc.font('Helvetica').fontSize(11).fillColor(MUTED)
@@ -442,13 +433,10 @@ router.get('/vistorias/:id/pdf/pendencias', requireAuth, async (req, res) => {
       renderEstrutura(doc, estrutura);
     }
 
-    applyHeaderFooter(doc,
-      { logoBuf, empresa: empresa?.nome, unidade: unidade?.nome || '—', dataVistoria, analista: analista?.nome },
-      `Relatório de Pendências · ${new Date().toLocaleDateString('pt-BR')}`
-    );
-
+    applyHeaderFooter(doc, { logoBuf, empresa: empresa?.nome, unidade: unidade?.nome || '—', dataVistoria, analista: analista?.nome });
     doc.flushPages();
     doc.end();
+
   } catch (err) {
     console.error('Erro ao gerar PDF de pendências:', err);
     if (!res.headersSent) res.status(500).json({ error: 'Erro ao gerar relatório de pendências' });
