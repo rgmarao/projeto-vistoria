@@ -222,12 +222,13 @@ function renderOc(doc, oc) {
     try { doc.image(oc.foto2buf, P2_X, contentY, { fit: [PHOTO_W, PHOTO_H] }); } catch { /* ignore */ }
   }
 
-  // Avança para abaixo da coluna mais longa
+  // Avança para abaixo da coluna mais longa — clampado a BODY_BOT para não
+  // criar página em branco quando PDFKit detecta cursor além do limite
   const photoEnd = (oc.foto1buf || oc.foto2buf) ? contentY + PHOTO_H + 8 : contentY;
-  const endY     = Math.max(leftEnd, photoEnd) + 10;
+  const endY     = Math.min(Math.max(leftEnd, photoEnd) + 10, BODY_BOT - 4);
 
   doc.text('', CONT_X, endY);
-  doc.moveDown(0.3);
+  if (doc.y + 20 < BODY_BOT) doc.moveDown(0.3);
 }
 
 // ── Renderiza estrutura completa ──────────────────────────────────────────────
@@ -252,10 +253,10 @@ function renderEstrutura(doc, estrutura) {
 
       for (const oc of item.ocs) renderOc(doc, oc);
 
-      doc.moveDown(0.4);
+      if (doc.y + 20 < BODY_BOT) doc.moveDown(0.4);
     }
 
-    doc.moveDown(0.8);
+    if (doc.y + 20 < BODY_BOT) doc.moveDown(0.8);
   }
 }
 
