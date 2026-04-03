@@ -31,9 +31,8 @@
     <div onclick="event.stopPropagation()"
       style="position:absolute;top:58px;right:12px;background:#fff;border-radius:16px;box-shadow:0 8px 32px rgba(27,58,107,.2);min-width:220px;overflow:hidden">
       <div style="padding:16px;background:var(--brand-navy);color:#fff">
-        <div style="font-size:13px;opacity:.7;margin-bottom:2px">Usuário</div>
         <div id="menu-nome" style="font-size:15px;font-weight:600"></div>
-        <div id="menu-email" style="font-size:12px;opacity:.7;margin-top:2px"></div>
+        <div id="menu-email" style="font-size:12px;opacity:.7;margin-top:3px"></div>
       </div>
       <button onclick="fecharMenu();limparCache()"
         style="width:100%;padding:14px 16px;border:none;background:none;text-align:left;font-size:14px;color:var(--text-primary);cursor:pointer;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border)">
@@ -81,8 +80,10 @@
     }
 
     const user = getUser();
-    document.getElementById('menu-nome').textContent  = user?.nome  || 'Usuário';
-    document.getElementById('menu-email').textContent = user?.email || '';
+    const nome  = user?.nome?.trim();
+    const email = user?.email || '';
+    document.getElementById('menu-nome').textContent  = nome || email || 'Usuário';
+    document.getElementById('menu-email').textContent = nome ? email : '';
 
     window.toggleMenu = (e) => {
       e.stopPropagation();
