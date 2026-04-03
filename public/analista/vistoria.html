@@ -58,7 +58,8 @@
     .oc-top  { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
     .oc-num  { font-size: 11px; color: #aaa; margin-bottom: 3px; font-weight: 700; text-transform: uppercase; }
     .oc-desc { font-size: 14px; color: #333; }
-    .oc-rec  { font-size: 13px; color: #e65100; margin-top: 5px; }
+    .oc-rec-label { font-size: 10px; font-weight: 700; letter-spacing: .06em; color: #aaa; text-transform: uppercase; margin-top: 8px; }
+    .oc-rec  { font-size: 13px; color: #555; margin-top: 2px; }
     .oc-acoes { display: flex; gap: 6px; flex-shrink: 0; }
 
     .fotos-row { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
@@ -176,7 +177,7 @@
             </div>
           </div>
           <div class="mb-2 rec-group" id="rec-group">
-            <label class="form-label">Recomendação</label>
+            <label class="form-label">Recomendações</label>
             <textarea id="oc-recomendacao" class="form-control" rows="2" placeholder="O que deve ser feito para corrigir..."></textarea>
           </div>
         </div>
@@ -318,7 +319,7 @@
             <div>
               <div class="oc-num">Ocorrência #${oc.numero_ocorrencia}</div>
               <div class="oc-desc">${oc.descricao}</div>
-              ${oc.recomendacao ? `<div class="oc-rec">💡 ${oc.recomendacao}</div>` : ''}
+              ${oc.recomendacao ? `<div class="oc-rec-label">Recomendações</div><div class="oc-rec">${oc.recomendacao}</div>` : ''}
             </div>
             ${editavel ? `
             <div class="oc-acoes">
