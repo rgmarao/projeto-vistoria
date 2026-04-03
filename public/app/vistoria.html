@@ -420,7 +420,9 @@
 
     // ── Progresso ─────────────────────────────────
     function itemPreenchido(item) {
-      return item.ocorrencias?.some(oc => oc.foto1 && oc.foto2) ?? false;
+      return item.ocorrencias?.some(oc =>
+        oc.situacao !== null || oc.descricao?.trim() || oc.foto1 || oc.foto2
+      ) ?? false;
     }
 
     function atualizarContadorArea(ai) {
@@ -460,7 +462,7 @@
       const preench = vistoria.areas.reduce((s, a) => s + a.itens.filter(itemPreenchido).length, 0);
 
       if (preench === 0) {
-        await dialogo('Avalie pelo menos um item antes de finalizar.');
+        await dialogo('Preencha pelo menos um item antes de finalizar.');
         return;
       }
       if (preench < total) {

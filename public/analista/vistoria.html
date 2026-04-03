@@ -198,7 +198,7 @@
 
     const params = new URLSearchParams(location.search);
     const visId  = params.get('id');
-    if (!visId) { alert('ID da vistoria não informado.'); history.back(); }
+    if (!visId) { dialogo('ID da vistoria não informado.').then(() => history.back()); }
 
     let editandoOcId = null;
     let contextoOc   = null; // { areaId, itemId }
@@ -421,9 +421,9 @@
     };
 
     window.deletarOc = async (id) => {
-      if (!confirm('Excluir esta ocorrência?')) return;
+      if (!await dialogo('Excluir esta ocorrência?', { cancelar: true })) return;
       try { await ocorrencias.deletar(id); carregar(); }
-      catch (err) { alert(err.message); }
+      catch (err) { await dialogo(err.message); }
     };
 
     // ── Upload fotos ───────────────────────────────
@@ -445,17 +445,17 @@
         if (!r.ok) throw new Error(d.error || 'Erro no upload');
         document.getElementById('file-input').value = '';
         carregar();
-      } catch (err) { alert(err.message); }
+      } catch (err) { await dialogo(err.message); }
     };
 
     window.deletarFoto = async (ocId, slot) => {
-      if (!confirm(`Remover foto ${slot}?`)) return;
+      if (!await dialogo(`Remover foto ${slot}?`, { cancelar: true })) return;
       const r = await fetch(`/api/ocorrencias/${ocId}/fotos/${slot}`, {
         method: 'DELETE',
         headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
       });
       const d = await r.json();
-      if (!r.ok) { alert(d.error); return; }
+      if (!r.ok) { await dialogo(d.error); return; }
       carregar();
     };
 
@@ -463,26 +463,26 @@
 
     // ── Finalizar / Publicar / PDF ─────────────────
     window.finalizar = async () => {
-      if (!confirm('Finalizar esta vistoria? Não será mais possível editar ocorrências.')) return;
+      if (!await dialogo('Finalizar esta vistoria? Não será mais possível editar ocorrências.', { cancelar: true })) return;
       try { await vistorias.finalizar(visId); carregar(); }
-      catch (err) { alert(err.message); }
+      catch (err) { await dialogo(err.message); }
     };
     window.reabrir = async () => {
-      if (!confirm('Reabrir esta vistoria para edição? Ela voltará ao status "Em andamento".')) return;
+      if (!await dialogo('Reabrir esta vistoria para edição? Ela voltará ao status "Em andamento".', { cancelar: true })) return;
       try { await vistorias.reabrir(visId); carregar(); }
-      catch (err) { alert(err.message); }
+      catch (err) { await dialogo(err.message); }
     };
     window.publicar = async () => {
-      if (!confirm('Publicar esta vistoria? Ela ficará visível para os moradores.')) return;
+      if (!await dialogo('Publicar esta vistoria? Ela ficará visível para os moradores.', { cancelar: true })) return;
       try { await vistorias.publicar(visId); carregar(); }
-      catch (err) { alert(err.message); }
+      catch (err) { await dialogo(err.message); }
     };
 
     function downloadPDF(url, filename) {
       fetch(url, { headers: { Authorization: 'Bearer ' + localStorage.getItem('token') } })
         .then(r => { if (!r.ok) throw new Error('Erro ao gerar PDF'); return r.blob(); })
         .then(blob => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; a.click(); URL.revokeObjectURL(a.href); })
-        .catch(err => alert(err.message));
+        .catch(err => dialogo(err.message));
     }
     window.baixarPDF = () => downloadPDF(`/api/vistorias/${visId}/pdf`, `vistoria-${visId.slice(0,8)}.pdf`);
     window.baixarPDFPendencias = () => downloadPDF(`/api/vistorias/${visId}/pdf/pendencias`, `pendencias-${visId.slice(0,8)}.pdf`);
@@ -490,8 +490,39 @@
 
     function esc(s) { return String(s).replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
 
+    // ── Custom dialog ──────────────────────────────
+    function dialogo(msg, { cancelar = false } = {}) {
+      return new Promise(resolve => {
+        const el = document.getElementById('app-dialog');
+        document.getElementById('dialog-msg').textContent = msg;
+        const btns = document.getElementById('dialog-btns');
+        btns.innerHTML = cancelar
+          ? `<button class="btn btn-link link-secondary me-auto" id="d-cancel">Cancelar</button>
+             <button class="btn btn-primary" id="d-ok">OK</button>`
+          : `<button class="btn btn-primary ms-auto" id="d-ok">OK</button>`;
+        el.style.display = 'flex';
+        document.getElementById('d-ok')?.addEventListener('click', () => { el.style.display = 'none'; resolve(true); });
+        document.getElementById('d-cancel')?.addEventListener('click', () => { el.style.display = 'none'; resolve(false); });
+      });
+    }
+
     carregar();
   </script>
+
+  <!-- Custom dialog -->
+  <div id="app-dialog" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.4);align-items:center;justify-content:center;padding:24px">
+    <div class="modal-dialog modal-dialog-centered" style="margin:0;max-width:400px;width:100%">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">VistorIA</h5>
+        </div>
+        <div class="modal-body">
+          <div id="dialog-msg" style="white-space:pre-line"></div>
+        </div>
+        <div class="modal-footer" id="dialog-btns"></div>
+      </div>
+    </div>
+  </div>
 
 </body>
 </html>
