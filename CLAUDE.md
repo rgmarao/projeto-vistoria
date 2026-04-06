@@ -1,0 +1,464 @@
+# CLAUDE.md — Memória Persistente do Projeto VistorIA
+
+> Este arquivo é lido no início de toda nova sessão. Contém o contexto completo do projeto para que não seja necessário reexplicar nada.
+
+---
+
+## 1. SOBRE O PROJETO
+
+**VistorIA** — Sistema de Vistoria Online. Aplicação web + PWA mobile-first para realização de vistorias técnicas em campo. Segmentos: aterro sanitário, mineração, imobiliário e outros.
+
+- **Web (analista/admin):** interface Tabler Bootstrap para criação, acompanhamento e publicação de vistorias.
+- **App (PWA):** interface mobile offline-first (IndexedDB) para vistoriadores em campo, com sincronização posterior.
+- **Relatórios:** geração de PDF com PDFKit (relatório completo + relatório de pendências).
+
+---
+
+## 2. STACK TECNOLÓGICA
+
+| Camada | Tecnologia |
+|--------|-----------|
+| Runtime | Node.js com ES Modules (`"type": "module"`) |
+| Framework | Express.js v5 |
+| Banco de dados | Supabase (PostgreSQL) |
+| Autenticação | Supabase Auth (JWT via Bearer token) |
+| Upload de fotos | Multer (memória) + Supabase Storage (bucket: `fotos`) |
+| Upload de logos | Multer (memória) + Supabase Storage (bucket: `logos`) |
+| PDF | PDFKit v0.18 |
+| Frontend Web | HTML + CSS + JS vanilla (sem framework) |
+| UI Web | Tabler Bootstrap (analista/admin) |
+| App Mobile | HTML + CSS + JS vanilla (PWA offline-first) |
+| Persistência offline | IndexedDB via `public/js/db.js` |
+| Plataforma | Replit |
+| Porta padrão | `5000` (env: `PORT`) |
+
+> **Nota:** O `package.json` contém dependências React/Vite/Drizzle que são **resquícios do template Replit** e **não são usadas** na aplicação. O projeto usa Express puro com HTML estático.
+
+---
+
+## 3. ESTRUTURA DE PASTAS
+
+```
+projeto-vistoria/
+├── index.js                    # Entry point — app.listen(PORT || 5000)
+├── package.json                # type: module; scripts: dev, start, build
+├── CLAUDE.md                   # Este arquivo
+├── .replit / replit.nix        # Configuração Replit
+├── push-to-github.sh           # Script utilitário de push
+├── pull-from-github.sh         # Script utilitário de pull
+│
+├── src/
+│   ├── app.js                  # Express app, mounting de rotas, middlewares globais
+│   ├── config/
+│   │   └── supabase.js         # Cliente Supabase (SUPABASE_URL + SUPABASE_SERVICE_KEY)
+│   ├── middlewares/
+│   │   └── auth.js             # requireAuth — valida Bearer token via supabase.auth.getUser()
+│   └── routes/
+│       ├── auth.js             # /api/auth — login, logout, register, reset-password, me
+│       ├── vistorias.js        # /api/vistorias — CRUD + finalizar, publicar, reabrir, checklist
+│       ├── ocorrencias.js      # /api/vistorias/:id/ocorrencias + /api/ocorrencias/:id
+│       ├── fotos.js            # /api/ocorrencias/:id/fotos — upload/delete (Multer)
+│       ├── areas.js            # /api/unidades/:id/areas + /api/areas/:id + /api/area-itens/:id
+│       ├── itens.js            # /api/itens — itens de verificação globais
+│       ├── empresas.js         # /api/empresas — CRUD
+│       ├── unidades.js         # /api/unidades — CRUD + logo upload
+│       ├── perfis.js           # /api/perfis — CRUD + vínculo com unidades
+│       ├── usuarios.js         # /api/usuarios — listagem e gestão
+│       └── relatorios.js       # /api/vistorias/:id/pdf + /pdf/pendencias (PDFKit)
+│
+└── public/                     # Servido como estático pelo Express
+    ├── index.html              # Login (redireciona por perfil)
+    ├── manifest.json           # PWA manifest (start_url: /app/index.html)
+    ├── sw.js                   # Service Worker (cache offline)
+    ├── img/
+    │   └── logo-vistoria.png   # Logo VistorIA (também usada no PDF)
+    ├── css/
+    │   └── style.css           # Estilos globais web
+    ├── js/
+    │   ├── api.js              # Cliente HTTP (apiFetch + apiFetchForm + exports por módulo)
+    │   └── db.js               # IndexedDB: stores checklists + vistorias; uuid(); dataURLtoBlob()
+    ├── admin/                  # Painel administrativo (Tabler)
+    │   ├── index.html          # Dashboard admin
+    │   ├── empresas.html       # CRUD empresas
+    │   ├── unidades.html       # CRUD unidades
+    │   ├── estrutura.html      # Gestão de áreas e itens
+    │   ├── itens.html          # Gestão de itens globais
+    │   └── usuarios.html       # Gestão de usuários
+    ├── analista/               # Painel do analista (Tabler)
+    │   ├── index.html          # Dashboard analista
+    │   ├── vistorias.html      # Listagem de vistorias
+    │   └── vistoria.html       # Detalhe/edição de vistoria (inclui PDF, reabrir, publicar)
+    └── app/                    # PWA mobile-first
+        ├── index.html          # Tela de login do app
+        ├── home.html           # Home: lista unidades, sync bar, menu avatar
+        ├── vistoria.html       # Formulário de vistoria offline (areas→itens→ocorrências)
+        └── app.css             # Estilos customizados do app
+```
+
+---
+
+## 4. VARIÁVEIS DE AMBIENTE
+
+```
+SUPABASE_URL          # URL do projeto Supabase (https://xxx.supabase.co)
+SUPABASE_SERVICE_KEY  # Chave de serviço (service_role, acesso total)
+PORT                  # Porta do servidor (padrão: 5000)
+```
+
+> No Replit, as variáveis ficam em **Secrets** (não em `.env`). Localmente, usar `.env` com `dotenv`.
+
+---
+
+## 5. BANCO DE DADOS — TABELAS E CAMPOS
+
+### `empresas`
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| id | uuid PK | |
+| nome | text | |
+| ativo | boolean | default true |
+| criado_em | timestamptz | |
+
+### `unidades`
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| id | uuid PK | |
+| empresa_id | uuid FK → empresas | |
+| nome | text | |
+| endereco | text | |
+| logo_url | text | Path no bucket `logos` |
+| ativo | boolean | default true |
+| criado_em | timestamptz | |
+
+### `perfis`
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| id | uuid PK | Mesmo UUID do Supabase Auth |
+| nome | text | Nome completo do usuário |
+| perfil | text | 'admin' \| 'analista' \| 'usuario' |
+| ativo | boolean | default true |
+| criado_em | timestamptz | |
+
+> **Login** retorna `{ user: { id, email, nome, role }, token }`. O campo `nome` vem da tabela `perfis`, não do Supabase Auth metadata.
+
+### `usuario_unidades`
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| id | uuid PK | |
+| usuario_id | uuid FK → perfis | |
+| unidade_id | uuid FK → unidades | |
+
+> Vincula usuários (perfil `usuario`) às unidades que podem visualizar.
+
+### `vistorias`
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| id | uuid PK | |
+| unidade_id | uuid FK → unidades | |
+| criado_por | uuid FK → perfis | Analista responsável |
+| status | text | 'em_andamento' \| 'finalizada' \| 'publicada' |
+| data_criacao | timestamptz | |
+| data_finalizacao | timestamptz | |
+
+### `ocorrencias`
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| id | uuid PK | |
+| vistoria_id | uuid FK → vistorias | |
+| area_id | uuid FK → areas **NULLABLE** | |
+| item_id | uuid FK → itens_verificacao **NULLABLE** | |
+| numero_ocorrencia | integer | Auto-incrementa por vistoria |
+| descricao | text | |
+| status | text | CHECK: 'ok' \| 'atencao' \| 'critico' |
+| recomendacao | text | |
+| origem | text | CHECK: 'vistoria' \| 'morador' \| 'web' \| 'app' |
+| foto_1_url | text | Path no bucket `fotos` |
+| foto_2_url | text | Path no bucket `fotos` |
+| criado_em | timestamptz | |
+
+**Constraints:**
+- `ocorrencias_status_check`: valores permitidos: `'ok'`, `'atencao'`, `'critico'`
+- `ocorrencias_origem_check`: valores permitidos: `'vistoria'`, `'morador'`, `'web'`, `'app'`
+- `area_id` e `item_id` são **NULLABLE** (ocorrência pode existir sem área/item)
+
+### `areas`
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| id | uuid PK | |
+| unidade_id | uuid FK → unidades | |
+| nome | text | |
+| ordem | integer | Ordenação na exibição |
+| ativo | boolean | default true |
+
+### `itens_verificacao`
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| id | uuid PK | |
+| descricao | text | |
+| ativo | boolean | default true |
+| criado_em | timestamptz | |
+
+### `area_itens`
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| id | uuid PK | |
+| area_id | uuid FK → areas | |
+| item_id | uuid FK → itens_verificacao | |
+| ordem | integer | Ordenação na exibição |
+
+> Tabela de junção M:N entre `areas` e `itens_verificacao`. Cada linha representa um item disponível em uma área específica de uma unidade.
+
+---
+
+## 6. PERFIS DE USUÁRIO E PERMISSÕES
+
+| Perfil | Permissões |
+|--------|-----------|
+| `admin` | Acesso total a todas as rotas e recursos |
+| `analista` | Cria, preenche, finaliza e publica vistorias; gera relatórios PDF |
+| `usuario` | Visualiza **apenas** vistorias com status `publicada` de suas unidades vinculadas |
+
+---
+
+## 7. MAPA COMPLETO DE ROTAS DA API
+
+### Auth (`/api/auth`)
+| Método | Rota | Auth | Perfil | Descrição | Status |
+|--------|------|------|--------|-----------|--------|
+| POST | `/api/auth/login` | ❌ | — | Login email/senha, retorna token + user (com nome) | ✅ |
+| POST | `/api/auth/logout` | ✅ | todos | Encerra sessão | ✅ |
+| POST | `/api/auth/register` | ❌ | — | Cadastra novo usuário | ✅ |
+| POST | `/api/auth/reset-password` | ❌ | — | Envia email de recuperação | ✅ |
+| GET | `/api/auth/me` | ✅ | todos | Retorna dados do usuário logado | ✅ |
+
+### Vistorias (`/api/vistorias`)
+| Método | Rota | Auth | Perfil | Descrição | Status |
+|--------|------|------|--------|-----------|--------|
+| GET | `/api/vistorias` | ✅ | todos | Lista vistorias (filtros: status, unidade_id) | ✅ |
+| GET | `/api/vistorias/:id` | ✅ | todos | Detalhe completo | ✅ |
+| GET | `/api/vistorias/:id/checklist` | ✅ | todos | Estrutura areas→itens→ocorrências | ✅ |
+| POST | `/api/vistorias` | ✅ | admin, analista | Cria nova vistoria | ✅ |
+| PATCH | `/api/vistorias/:id/finalizar` | ✅ | admin, analista | `em_andamento` → `finalizada` | ✅ |
+| PATCH | `/api/vistorias/:id/publicar` | ✅ | admin, analista | `finalizada` → `publicada` | ✅ |
+| PATCH | `/api/vistorias/:id/reabrir` | ✅ | admin, analista | `finalizada` → `em_andamento` | ✅ |
+
+### Ocorrências
+| Método | Rota | Auth | Perfil | Descrição | Status |
+|--------|------|------|--------|-----------|--------|
+| POST | `/api/vistorias/:id/ocorrencias` | ✅ | admin, analista | Cria ocorrência | ✅ |
+| PUT | `/api/ocorrencias/:id` | ✅ | admin, analista | Atualiza ocorrência | ✅ |
+| DELETE | `/api/ocorrencias/:id` | ✅ | admin, analista | Remove ocorrência | ✅ |
+
+### Fotos
+| Método | Rota | Auth | Perfil | Descrição | Status |
+|--------|------|------|--------|-----------|--------|
+| GET | `/api/ocorrencias/:id/fotos` | ✅ | todos | Retorna `{ path, url }` com Signed URLs (1h) | ✅ |
+| POST | `/api/ocorrencias/:id/fotos` | ✅ | admin, analista | Upload foto (form: `foto` + `slot`=1\|2) | ✅ |
+| DELETE | `/api/ocorrencias/:id/fotos/:slot` | ✅ | admin, analista | Remove foto do slot (1 ou 2) | ✅ |
+
+### Áreas e Itens
+| Método | Rota | Auth | Descrição | Status |
+|--------|------|------|-----------|--------|
+| GET | `/api/unidades/:id/areas` | ✅ | Lista áreas (`?incluir_inativas=true`) | ✅ |
+| GET | `/api/unidades/:id/checklist` | ✅ | Estrutura completa para app offline | ✅ |
+| GET | `/api/areas/:id/itens` | ✅ | Itens de uma área | ✅ |
+| POST | `/api/unidades/:id/areas` | ✅ | Cria área | ✅ |
+| POST | `/api/areas/:id/itens` | ✅ | Associa item à área | ✅ |
+| PUT | `/api/areas/:id` | ✅ | Edita área | ✅ |
+| PATCH | `/api/areas/:id/ativar` | ✅ | Ativa área | ✅ |
+| PATCH | `/api/areas/:id/desativar` | ✅ | Desativa área | ✅ |
+| DELETE | `/api/areas/:id` | ✅ | Remove área | ✅ |
+| DELETE | `/api/area-itens/:id` | ✅ | Remove vínculo item↔área | ✅ |
+
+### Itens de Verificação (`/api/itens`)
+| Método | Rota | Auth | Descrição | Status |
+|--------|------|------|-----------|--------|
+| GET | `/api/itens` | ✅ | Lista todos (`?ativo=true\|false`) | ✅ |
+| POST | `/api/itens` | ✅ | Cria item global | ✅ |
+| PUT | `/api/itens/:id` | ✅ | Edita descrição | ✅ |
+| PATCH | `/api/itens/:id/ativar` | ✅ | Ativa | ✅ |
+| PATCH | `/api/itens/:id/desativar` | ✅ | Desativa | ✅ |
+
+### Empresas (`/api/empresas`)
+| Método | Rota | Auth | Descrição | Status |
+|--------|------|------|-----------|--------|
+| GET | `/api/empresas` | ✅ | Lista (`?ativo=`) | ✅ |
+| GET | `/api/empresas/:id` | ✅ | Detalhe | ✅ |
+| POST | `/api/empresas` | ✅ | Cria | ✅ |
+| PUT | `/api/empresas/:id` | ✅ | Edita | ✅ |
+| PATCH | `/api/empresas/:id/ativar` | ✅ | Ativa | ✅ |
+| PATCH | `/api/empresas/:id/desativar` | ✅ | Desativa | ✅ |
+
+### Unidades (`/api/unidades`)
+| Método | Rota | Auth | Descrição | Status |
+|--------|------|------|-----------|--------|
+| GET | `/api/unidades` | ✅ | Lista (`?empresa_id=`, `?ativo=`) | ✅ |
+| GET | `/api/unidades/:id` | ✅ | Detalhe | ✅ |
+| POST | `/api/unidades` | ✅ | Cria (FormData, campo `logo`) | ✅ |
+| PUT | `/api/unidades/:id` | ✅ | Edita (FormData, campo `logo`) | ✅ |
+| PATCH | `/api/unidades/:id/ativar` | ✅ | Ativa | ✅ |
+| PATCH | `/api/unidades/:id/desativar` | ✅ | Desativa | ✅ |
+| DELETE | `/api/unidades/:id/logo` | ✅ | Remove logo | ✅ |
+
+### Perfis (`/api/perfis`)
+| Método | Rota | Auth | Descrição | Status |
+|--------|------|------|-----------|--------|
+| GET | `/api/perfis` | ✅ | Lista (`?ativo=`) | ✅ |
+| GET | `/api/perfis/:id` | ✅ | Detalhe + unidades vinculadas | ✅ |
+| GET | `/api/perfis/:id/unidades` | ✅ | Unidades do perfil | ✅ |
+| POST | `/api/perfis` | ✅ | Cria perfil | ✅ |
+| POST | `/api/perfis/:id/unidades` | ✅ | Vincula unidade ao perfil | ✅ |
+| PUT | `/api/perfis/:id` | ✅ | Edita perfil | ✅ |
+| PATCH | `/api/perfis/:id/ativar` | ✅ | Ativa | ✅ |
+| PATCH | `/api/perfis/:id/desativar` | ✅ | Desativa | ✅ |
+| DELETE | `/api/perfis/:id/unidades/:unidade_id` | ✅ | Desvincula unidade | ✅ |
+
+### Relatórios PDF
+| Método | Rota | Auth | Descrição | Status |
+|--------|------|------|-----------|--------|
+| GET | `/api/vistorias/:id/pdf` | ✅ | Relatório completo (download) | ✅ |
+| GET | `/api/vistorias/:id/pdf/pendencias` | ✅ | Relatório de pendências (atencao+critico) | ✅ |
+
+---
+
+## 8. CICLO DE VIDA DA VISTORIA
+
+```
+em_andamento  ──finalizar──►  finalizada  ──publicar──►  publicada
+                                   │
+                               ◄──reabrir
+```
+
+| Status | Quem vê | Quem edita ocorrências |
+|--------|---------|------------------------|
+| `em_andamento` | admin, analista | admin, analista |
+| `finalizada` | admin, analista | ninguém (somente reabrir) |
+| `publicada` | admin, analista, **usuario** (suas unidades) | ninguém |
+
+---
+
+## 9. REGRAS DE NEGÓCIO
+
+- Ocorrências só podem ser criadas/editadas em vistorias `em_andamento`
+- `recomendacao` é sugerida pelo sistema quando status = `atencao` ou `critico`; exibida na UI analista/web com label "RECOMENDAÇÕES" em uppercase muted
+- Fotos: máx **2 por ocorrência** (slots 1 e 2), máx **10MB**, formatos: JPEG, PNG, WEBP
+- Ao sobrescrever foto: a foto antiga é removida do Storage antes do novo upload
+- URLs de fotos são **Signed URLs** válidas por **1 hora** (nunca armazenar URL permanente)
+- GET de fotos sempre retorna objeto `{ path, url }` — nunca `null` direto
+- `numero_ocorrencia` auto-incrementa por vistoria (max existente + 1)
+- `area_id` e `item_id` são NULLABLE — ocorrências livres são permitidas
+- **itemPreenchido** (app): aceita qualquer dado — status OU texto OU foto1 OU foto2
+- **Sync app→servidor**: qualquer ocorrência com qualquer dado preenchido deve ser sincronizada
+
+---
+
+## 10. DECISÕES TÉCNICAS E CONVENÇÕES
+
+### app.js — Ordem de montagem de rotas
+```js
+// CRÍTICO: fotosRoutes DEVE vir ANTES de vistoriasRoutes
+// (Multer é middleware; se vistoriasRoutes vier primeiro, pode capturar a rota)
+app.use('/api', fotosRoutes);         // genérica — por último entre as específicas
+app.use('/api', ocorrenciasRoutes);
+app.use('/api', areasRoutes);
+app.use('/api', relatoriosRoutes);
+```
+
+### Upload de arquivos (FormData)
+- **NUNCA** definir `Content-Type` manualmente ao enviar FormData
+- O browser define automaticamente com o `boundary` correto
+- `apiFetchForm()` em `public/js/api.js` existe para isso
+
+### ES Modules
+- Todo arquivo usa `import/export` (sem `require`)
+- `package.json` tem `"type": "module"`
+- Para `__dirname`: `const __dirname = dirname(fileURLToPath(import.meta.url))`
+
+### PDF (PDFKit)
+- Sempre usar `bufferPages: true` para permitir cabeçalho/rodapé retroativo
+- Padrão: `doc.switchToPage(i)` → desenhar header/footer → `doc.flushPages()` → `doc.end()`
+- **Armadilha crítica:** `doc.text()` no rodapé pode ultrapassar `doc.page.maxY()` e criar páginas extras. Fix: zerar `doc.page.margins.bottom = 0` antes do texto do rodapé, restaurar depois
+- Dimensões A4: `PAGE_W=595.28`, `PAGE_H=841.89` (pontos)
+- Margens laterais: `M=45`. Header height: `HDR_H=75`. Footer height: `FTR_H=30`
+- Layout de ocorrência: texto esquerda (249pt) + foto1 (113pt) + foto2 (113pt) lado a lado
+
+### Dialogs customizados
+- Todos os `alert()` e `confirm()` nativos foram substituídos por `dialogo()` promise-based
+- Função `dialogo(msg, { cancelar: false })` retorna `Promise<boolean>`
+- O elemento `<div id="app-dialog">` deve existir no HTML de cada página que usa `dialogo()`
+- Estilo: overlay `rgba(0,0,0,.4)`, card branco com header navy `#1b3a6b`, inline styles (não Tabler)
+
+### Autenticação no frontend
+- Token: `localStorage.getItem('token')`
+- User: `JSON.parse(localStorage.getItem('user'))` — objeto `{ id, email, nome, role }`
+- `role` = perfil do usuário (`admin`, `analista`, `usuario`)
+- `api.js` injeta `Authorization: Bearer <token>` automaticamente
+
+---
+
+## 11. STATUS DO DESENVOLVIMENTO
+
+### Concluído
+- **Fase 1:** Infraestrutura, Express, Supabase, Auth JWT
+- **Fase 2:** CRUD Vistorias (criar, listar, detalhar, finalizar, publicar, reabrir)
+- **Fase 3:** CRUD Ocorrências (criar, editar, deletar + número auto-incremento)
+- **Fase 3.5:** Áreas e Itens — estrutura areas→area_itens→itens_verificacao; seed com 3 segmentos (Aterro Sanitário, Mineração, Imobiliário)
+- **Fase 4:** Upload de Fotos (2 slots, 10MB, signed URLs, remoção ao sobrescrever)
+- **Fase 5 parcial:** Admin web — empresas, unidades, estrutura, itens, usuários (HTML existente, funcionalidade parcial)
+- **Fase 6:** Relatórios PDF — completo + pendências, cabeçalho/rodapé repetido, layout 2 colunas texto+fotos, agrupamento por área→item
+- **App PWA:** Home (unidades, sync), Vistoria offline (areas→itens→ocorrências→fotos), Sincronização com API
+- **UX:** Dialogs customizados VistorIA, menu avatar com nome/email/limpar cache/sair, reabrir vistoria (web + app)
+
+### Pendente
+- **Fase 5 completa:** CRUD Administrativo robusto (gestão de usuários, permissões)
+- **Fase 7:** App Mobile nativo (React Native / Expo) — offline-first com sincronização avançada
+- **Fase 8:** Novos segmentos de checklist (Central de Concreto Usinado, outros)
+- **Melhorias PDF:** assinatura digital, marca d'água, geração assíncrona para relatórios grandes
+- **Notificações:** push notifications para moradores (perfil `usuario`)
+
+---
+
+## 12. ARMADILHAS CONHECIDAS (LIÇÕES APRENDIDAS)
+
+### UUIDs sempre válidos
+- Seeds SQL devem usar UUIDs reais (`gen_random_uuid()` ou UUIDs fixos no formato correto)
+- **NUNCA** usar strings como `'it-001'`, `'area-01'` — causam erros de tipo no Supabase
+
+### Seeds SQL — limite do editor
+- O SQL Editor do Supabase tem limite de tamanho
+- Sempre quebrar seeds grandes em blocos menores (ex: por segmento ou por tabela)
+
+### Ordem de rotas no app.js
+- `fotosRoutes` usa Multer como middleware e deve ser registrado ANTES de `vistoriasRoutes`
+- Se a ordem estiver errada, uploads podem falhar silenciosamente
+
+### Content-Type em uploads
+- **NUNCA** setar `Content-Type: multipart/form-data` manualmente
+- O browser precisa setar com o `boundary` correto — se forçado manualmente, quebra o parse
+
+### Porta no Replit
+- Sempre usar `process.env.PORT || 5000`
+- O Replit mapeia a porta 5000 externamente; hardcodar outra porta quebra o preview
+
+### PDFKit — páginas extras/fantasma
+- **Causa:** `doc.text()` executado quando `doc.y > doc.page.maxY()` auto-cria nova página, mesmo dentro de `switchToPage()`
+- **Diagnóstico:** remover texto do rodapé — se páginas extras somem, é o texto do footer
+- **Fix:** `doc.page.margins.bottom = 0` antes de escrever no rodapé; restaurar depois
+- **Causa raiz:** `margins.bottom` afeta `maxY()`. Com `margins.bottom = PAGE_H - BODY_BOT ≈ 40`, o `maxY()` fica em ~802pt — qualquer texto em y>802 cria nova página
+
+### PDFKit — prefixo duplicado em nomes de área
+- Se o nome da área já contém o número (ex: "01 - PRÉDIO"), não adicionar `padStart` prefix
+- Verificar o dado real do banco antes de formatar
+
+### Login — campo `nome` ausente
+- O Supabase Auth não retorna `nome` nos metadados por padrão
+- O campo `nome` vem da tabela `perfis`, não do `user_metadata`
+- A rota `/api/auth/login` deve fazer SELECT na tabela `perfis` após autenticar
+
+### Replit — deploy de mudanças
+- Após commit/push, o Replit **não aplica automaticamente**
+- O usuário deve fazer `git pull` + reiniciar o servidor no Replit manualmente
+
+### Número de ocorrência — sem `#`
+- Exibir como "Ocorrência 1" (não "#1" nem "#Ocorrência 1")
+- Aplicar tanto na web (`analista/vistoria.html`) quanto no PDF (`relatorios.js`)
