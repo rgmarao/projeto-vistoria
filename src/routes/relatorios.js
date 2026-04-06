@@ -103,9 +103,17 @@ function drawHeader(doc, { logoBuf, empresa, unidade, dataVistoria, analista }) 
 }
 
 // ── Rodapé de página ──────────────────────────────────────────────────────────
-function drawFooter(doc) {
+function drawFooter(doc, pageNum, total) {
   const y = PAGE_H - FTR_H;
   hline(doc, y, NAVY, 1.2);
+
+  // Zera temporariamente a margem inferior para que doc.text() não detecte
+  // "overflow" e crie uma página em branco ao desenhar texto abaixo de maxY()
+  const savedBottom = doc.page.margins.bottom;
+  doc.page.margins.bottom = 0;
+  doc.font('Helvetica').fontSize(8).fillColor(TEXT)
+     .text(`Página ${pageNum} de ${total}`, CONT_X, y + 8, { width: CONT_W, align: 'right' });
+  doc.page.margins.bottom = savedBottom;
 }
 
 function applyHeaderFooter(doc, headerData) {
@@ -113,7 +121,7 @@ function applyHeaderFooter(doc, headerData) {
   for (let i = 0; i < range.count; i++) {
     doc.switchToPage(range.start + i);
     drawHeader(doc, headerData);
-    drawFooter(doc);
+    drawFooter(doc, i + 1, range.count);
   }
 }
 
