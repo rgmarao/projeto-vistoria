@@ -5,7 +5,8 @@ modules = ["nodejs-20"]
 channel = "stable-23_05"
 
 [deployment]
-run = ["sh", "-c", "bash pull-from-github.sh && node index.js"]
+run = ["node", "index.js"]
+deploymentTarget = "autoscale"
 
 [[ports]]
 localPort = 5000
