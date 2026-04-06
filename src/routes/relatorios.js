@@ -103,11 +103,11 @@ function drawHeader(doc, { logoBuf, empresa, unidade, dataVistoria, analista }) 
 }
 
 // ── Rodapé de página ──────────────────────────────────────────────────────────
-function drawFooter(doc, pageNum, total) {
+function drawFooter(doc, pageNum) {
   const y = PAGE_H - FTR_H;
   hline(doc, y, NAVY, 1.2);
   doc.font('Helvetica').fontSize(8).fillColor(TEXT)
-     .text(`Página ${pageNum} de ${total}`, CONT_X, y + 8, { width: CONT_W, align: 'right' });
+     .text(`Página ${pageNum}`, CONT_X, y + 8, { width: CONT_W, align: 'right' });
 }
 
 function applyHeaderFooter(doc, headerData) {
@@ -115,7 +115,7 @@ function applyHeaderFooter(doc, headerData) {
   for (let i = 0; i < range.count; i++) {
     doc.switchToPage(range.start + i);
     drawHeader(doc, headerData);
-    drawFooter(doc, i + 1, range.count);
+    drawFooter(doc, i + 1);
   }
 }
 
@@ -236,11 +236,9 @@ function renderEstrutura(doc, estrutura) {
   for (const area of estrutura) {
     if (doc.y + 55 > BODY_BOT) doc.addPage();
 
-    // Área: numerada, navy, bold, maior
-    const numArea = String(area.area_ordem || '').padStart(2, '0');
-    const tituloArea = `${numArea} - ${area.area_nome.toUpperCase()}`;
+    // Área: nome em maiúsculas, navy, bold
     doc.font('Helvetica-Bold').fontSize(13).fillColor(NAVY)
-       .text(tituloArea, CONT_X, doc.y, { width: CONT_W });
+       .text(area.area_nome.toUpperCase(), CONT_X, doc.y, { width: CONT_W });
     doc.moveDown(0.5);
 
     for (const item of area.itens) {
