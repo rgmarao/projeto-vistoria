@@ -103,11 +103,9 @@ function drawHeader(doc, { logoBuf, empresa, unidade, dataVistoria, analista }) 
 }
 
 // ── Rodapé de página ──────────────────────────────────────────────────────────
-function drawFooter(doc, pageNum) {
+function drawFooter(doc) {
   const y = PAGE_H - FTR_H;
   hline(doc, y, NAVY, 1.2);
-  doc.font('Helvetica').fontSize(8).fillColor(TEXT)
-     .text(`Página ${pageNum}`, CONT_X, y + 8, { width: CONT_W, align: 'right' });
 }
 
 function applyHeaderFooter(doc, headerData) {
@@ -115,7 +113,7 @@ function applyHeaderFooter(doc, headerData) {
   for (let i = 0; i < range.count; i++) {
     doc.switchToPage(range.start + i);
     drawHeader(doc, headerData);
-    drawFooter(doc, i + 1);
+    drawFooter(doc);
   }
 }
 
