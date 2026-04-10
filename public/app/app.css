@@ -186,9 +186,39 @@ body {
 .area-body.open { display: block; }
 
 /* ── Item do checklist ───────────────────────────────────────── */
-.item-check { padding: 16px 16px 14px; border-bottom: 1px solid #f0f4f8; }
+.item-check { border-bottom: 1px solid #f0f4f8; }
 .item-check:last-child { border-bottom: none; }
-.item-desc { font-size: 14px; font-weight: 500; color: var(--text-primary); margin-bottom: 12px; line-height: 1.45; }
+.item-desc { font-size: 14px; font-weight: 500; color: var(--text-primary); margin-bottom: 0; line-height: 1.45; }
+
+/* ── Item collapsível ────────────────────────────────────────── */
+.item-hdr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  cursor: pointer;
+  user-select: none;
+  gap: 8px;
+}
+.item-arr {
+  font-size: 12px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.item-badge {
+  background: var(--ok);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.item-body      { display: none; }
+.item-body.open { display: block; }
 
 /* ── Bloco de ocorrência ─────────────────────────────────────── */
 .ocorrencia-block {
@@ -303,6 +333,46 @@ body {
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
 }
+
+/* ── Botão concluído ─────────────────────────────────────────── */
+.btn-concluido {
+  width: 100%;
+  padding: 10px;
+  border: 1.5px solid #a5d6a7;
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ok);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: all .15s;
+}
+.btn-concluido.ativo {
+  background: var(--ok);
+  border-color: var(--ok);
+  color: #fff;
+}
+.btn-concluido:active { transform: scale(.98); }
+
+/* ── Barra colapsar tudo ─────────────────────────────────────── */
+.collapse-bar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 4px 16px;
+  background: var(--bg);
+}
+.btn-colapsar {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+.btn-colapsar:active { background: var(--border); }
 
 /* ── Botão adicionar ocorrência ──────────────────────────────── */
 .btn-add-oc {
