@@ -272,7 +272,8 @@ function renderOc(doc, oc) {
 // ── Renderiza estrutura completa ──────────────────────────────────────────────
 function renderEstrutura(doc, estrutura) {
   for (const area of estrutura) {
-    if (doc.y + 55 > BODY_BOT) doc.addPage();
+    // Garante que o título da área não fique órfão do primeiro item + início da ocorrência
+    if (doc.y + 110 > BODY_BOT) doc.addPage();
 
     // Área: nome em maiúsculas, navy, bold
     doc.font('Helvetica-Bold').fontSize(13).fillColor(NAVY)
@@ -280,7 +281,8 @@ function renderEstrutura(doc, estrutura) {
     doc.moveDown(0.5);
 
     for (const item of area.itens) {
-      if (doc.y + 35 > BODY_BOT) doc.addPage();
+      // Garante que o título do item não fique órfão do início da primeira ocorrência
+      if (doc.y + 80 > BODY_BOT) doc.addPage();
 
       // Item: uppercase, bold, preto
       doc.font('Helvetica-Bold').fontSize(10).fillColor(TEXT)
