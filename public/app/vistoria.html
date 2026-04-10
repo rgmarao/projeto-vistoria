@@ -91,6 +91,11 @@
   <div class="progress-bar"><div class="progress-fill" id="prog-fill" style="width:0%"></div></div>
   <div class="progress-txt" id="prog-txt"></div>
 
+  <!-- Barra de controle -->
+  <div class="collapse-bar">
+    <button class="btn-colapsar" onclick="colapsarTudo()">↑ Colapsar tudo</button>
+  </div>
+
   <!-- Áreas + Itens -->
   <div id="checklist"></div>
 
@@ -139,7 +144,7 @@
     let fotoAlvo = null; // { ai, ii, oi, slot }
 
     function novaOcorrencia() {
-      return { local_id: uuid(), situacao: null, descricao: '', recomendacao: '', foto1: null, foto2: null };
+      return { local_id: uuid(), situacao: null, descricao: '', recomendacao: '', foto1: null, foto2: null, concluido: false };
     }
 
     // ── Migração de formato antigo ────────────────
@@ -154,13 +159,18 @@
               descricao:    item.observacao   || '',
               recomendacao: '',
               foto1:        item.foto1        || null,
-              foto2:        item.foto2        || null
+              foto2:        item.foto2        || null,
+              concluido:    false
             }];
             delete item.situacao;
             delete item.observacao;
             delete item.foto1;
             delete item.foto2;
             migrou = true;
+          } else {
+            for (const oc of item.ocorrencias) {
+              if (oc.concluido === undefined) { oc.concluido = false; migrou = true; }
+            }
           }
         }
       }
@@ -224,7 +234,7 @@
     }
 
     function renderArea(area, ai) {
-      const preench = area.itens.filter(itemPreenchido).length;
+      const preench = area.itens.filter(itemConcluido).length;
       const total   = area.itens.length;
       return `
         <div class="area-section" id="area-sec-${ai}">
@@ -242,13 +252,22 @@
     }
 
     function renderItem(ai, ii, item) {
+      const conc = item.ocorrencias?.some(oc => oc.concluido);
       return `
         <div class="item-check" id="item-${ai}-${ii}">
-          <div class="item-desc">${item.descricao}</div>
-          <div id="ocs-${ai}-${ii}">
-            ${item.ocorrencias.map((oc, oi) => renderOcorrencia(ai, ii, oi, oc, item.ocorrencias.length)).join('')}
+          <div class="item-hdr" id="item-hdr-${ai}-${ii}" onclick="toggleItem(${ai},${ii})">
+            <div class="item-desc">${item.descricao}</div>
+            <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+              <span class="item-badge" id="item-badge-${ai}-${ii}" style="display:${conc ? 'inline-flex' : 'none'}">✓</span>
+              <span class="item-arr" id="item-arr-${ai}-${ii}">▾</span>
+            </div>
           </div>
-          <button class="btn-add-oc" onclick="adicionarOcorrencia(${ai},${ii})">+ Adicionar ocorrência</button>
+          <div class="item-body" id="item-body-${ai}-${ii}">
+            <div id="ocs-${ai}-${ii}">
+              ${item.ocorrencias.map((oc, oi) => renderOcorrencia(ai, ii, oi, oc, item.ocorrencias.length)).join('')}
+            </div>
+            <button class="btn-add-oc" onclick="adicionarOcorrencia(${ai},${ii})">+ Adicionar ocorrência</button>
+          </div>
         </div>`;
     }
 
@@ -287,6 +306,13 @@
             ${renderFotoSlot(ai, ii, oi, 1, oc.foto1)}
             ${renderFotoSlot(ai, ii, oi, 2, oc.foto2)}
           </div>
+          <div style="padding:0 12px 12px">
+            <button class="btn-concluido ${oc.concluido ? 'ativo' : ''}"
+              id="btn-concluido-${ai}-${ii}-${oi}"
+              onclick="toggleConcluido(${ai},${ii},${oi})">
+              ${oc.concluido ? '✓ Concluído' : 'Marcar como concluído'}
+            </button>
+          </div>
         </div>`;
     }
 
@@ -317,16 +343,61 @@
       arr.textContent = open ? '▴' : '▾';
     };
 
+    window.toggleItem = (ai, ii) => {
+      const body = document.getElementById(`item-body-${ai}-${ii}`);
+      const arr  = document.getElementById(`item-arr-${ai}-${ii}`);
+      if (!body) return;
+      const open = body.classList.toggle('open');
+      if (arr) arr.textContent = open ? '▴' : '▾';
+    };
+
+    window.toggleConcluido = async (ai, ii, oi) => {
+      const oc = vistoria.areas[ai].itens[ii].ocorrencias[oi];
+      oc.concluido = !oc.concluido;
+      const btn = document.getElementById(`btn-concluido-${ai}-${ii}-${oi}`);
+      if (btn) {
+        btn.classList.toggle('ativo', oc.concluido);
+        btn.textContent = oc.concluido ? '✓ Concluído' : 'Marcar como concluído';
+      }
+      atualizarIndicadorItem(ai, ii);
+      atualizarContadorArea(ai);
+      atualizarProgresso();
+      await autoSalvar();
+    };
+
+    window.colapsarTudo = () => {
+      document.querySelectorAll('.area-body.open').forEach(el => {
+        const m = el.id.match(/^area-body-(\d+)$/);
+        if (!m) return;
+        const ai = parseInt(m[1]);
+        el.classList.remove('open');
+        document.getElementById(`area-hdr-${ai}`)?.classList.remove('open');
+        const arr = document.getElementById(`area-arr-${ai}`);
+        if (arr) arr.textContent = '▾';
+      });
+      document.querySelectorAll('.item-body.open').forEach(el => {
+        el.classList.remove('open');
+        const m = el.id.match(/^item-body-(\d+)-(\d+)$/);
+        if (m) {
+          const arr = document.getElementById(`item-arr-${m[1]}-${m[2]}`);
+          if (arr) arr.textContent = '▾';
+        }
+      });
+    };
+
     window.setSituacao = async (ai, ii, oi, situacao) => {
-      vistoria.areas[ai].itens[ii].ocorrencias[oi].situacao = situacao;
+      const oc = vistoria.areas[ai].itens[ii].ocorrencias[oi];
+      // Toggle: clicar no mesmo status ativo desmarca
+      oc.situacao = oc.situacao === situacao ? null : situacao;
+      const nova = oc.situacao;
       // Atualiza botões sem re-render
       const block = document.getElementById(`oc-block-${ai}-${ii}-${oi}`);
       block?.querySelectorAll('.btn-status').forEach(btn => {
-        btn.classList.toggle('ativo', btn.dataset.status === situacao);
+        btn.classList.toggle('ativo', btn.dataset.status === nova);
       });
       // Mostra/esconde campo de recomendação (atenção e crítico)
       const rec = document.getElementById(`rec-${ai}-${ii}-${oi}`);
-      if (rec) rec.classList.toggle('visivel', ['atencao','critico'].includes(situacao));
+      if (rec) rec.classList.toggle('visivel', ['atencao','critico'].includes(nova));
       atualizarContadorArea(ai);
       atualizarProgresso();
       await autoSalvar();
@@ -359,6 +430,7 @@
       await autoSalvar();
       document.getElementById(`ocs-${ai}-${ii}`).innerHTML =
         item.ocorrencias.map((oc, oi2) => renderOcorrencia(ai, ii, oi2, oc, item.ocorrencias.length)).join('');
+      atualizarIndicadorItem(ai, ii);
       atualizarContadorArea(ai);
       atualizarProgresso();
     };
@@ -419,24 +491,36 @@
     };
 
     // ── Progresso ─────────────────────────────────
-    function itemPreenchido(item) {
+    // Conta itens com ao menos uma ocorrência marcada como concluída (para contador e barra)
+    function itemConcluido(item) {
+      return item.ocorrencias?.some(oc => oc.concluido === true) ?? false;
+    }
+
+    // Verifica se o item tem algum dado preenchido (para validação do Finalizar)
+    function itemComDados(item) {
       return item.ocorrencias?.some(oc =>
         oc.situacao !== null || oc.descricao?.trim() || oc.foto1 || oc.foto2
       ) ?? false;
     }
 
+    function atualizarIndicadorItem(ai, ii) {
+      const item  = vistoria.areas[ai].itens[ii];
+      const badge = document.getElementById(`item-badge-${ai}-${ii}`);
+      if (badge) badge.style.display = item.ocorrencias.some(oc => oc.concluido) ? 'inline-flex' : 'none';
+    }
+
     function atualizarContadorArea(ai) {
       const area = vistoria.areas[ai];
       const cnt  = document.getElementById(`area-cnt-${ai}`);
-      if (cnt) cnt.textContent = `${area.itens.filter(itemPreenchido).length}/${area.itens.length}`;
+      if (cnt) cnt.textContent = `${area.itens.filter(itemConcluido).length}/${area.itens.length}`;
     }
 
     function atualizarProgresso() {
       const total   = vistoria.areas.reduce((s, a) => s + a.itens.length, 0);
-      const preench = vistoria.areas.reduce((s, a) => s + a.itens.filter(itemPreenchido).length, 0);
-      const pct = total ? Math.round(preench / total * 100) : 0;
+      const concl   = vistoria.areas.reduce((s, a) => s + a.itens.filter(itemConcluido).length, 0);
+      const pct = total ? Math.round(concl / total * 100) : 0;
       document.getElementById('prog-fill').style.width = pct + '%';
-      document.getElementById('prog-txt').textContent  = `${preench} de ${total} itens preenchidos (${pct}%)`;
+      document.getElementById('prog-txt').textContent  = `${concl} de ${total} itens concluídos (${pct}%)`;
     }
 
     // ── Persistência ──────────────────────────────
@@ -459,14 +543,14 @@
 
     window.finalizarVistoria = async () => {
       const total   = vistoria.areas.reduce((s, a) => s + a.itens.length, 0);
-      const preench = vistoria.areas.reduce((s, a) => s + a.itens.filter(itemPreenchido).length, 0);
+      const preench = vistoria.areas.reduce((s, a) => s + a.itens.filter(itemComDados).length, 0);
 
       if (preench === 0) {
         await dialogo('Preencha pelo menos um item antes de finalizar.');
         return;
       }
       if (preench < total) {
-        const ok = await dialogo(`${total - preench} item(ns) ainda sem avaliação.\nDeseja finalizar assim mesmo?`, { cancelar: true });
+        const ok = await dialogo(`${total - preench} item(ns) ainda sem dados.\nDeseja finalizar assim mesmo?`, { cancelar: true });
         if (!ok) return;
       }
 
