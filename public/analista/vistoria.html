@@ -95,6 +95,7 @@
     .rec-group { display: none; }
     .rec-group.visivel { display: block; }
     input[type="file"] { display: none; }
+    .oc-vazio { color: #adb5bd; font-weight: normal; font-style: italic; }
   </style>
 </head>
 <body class="antialiased">
@@ -205,6 +206,7 @@
     let uploadOcId   = null;
     let uploadSlot   = null;
     let editavel     = false;
+    let estadoSalvo  = null;
 
     const getModal = () => window.bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-oc'));
 
@@ -265,6 +267,14 @@
     }
 
     // ── Checklist ──────────────────────────────────
+    function captureEstado() {
+      const abertas = [];
+      document.querySelectorAll('.area-body').forEach((el, i) => {
+        if (el.classList.contains('open')) abertas.push(i);
+      });
+      estadoSalvo = { scrollY: window.scrollY, abertas };
+    }
+
     function renderChecklist(areas) {
       const div = document.getElementById('checklist-areas');
       if (!areas?.length) {
@@ -272,7 +282,14 @@
         return;
       }
       div.innerHTML = areas.map((area, ai) => renderArea(area, ai)).join('');
-      toggleArea(0); // abre primeira área
+      if (estadoSalvo) {
+        estadoSalvo.abertas.forEach(i => toggleArea(i));
+        const scrollAlvo = estadoSalvo.scrollY;
+        estadoSalvo = null;
+        requestAnimationFrame(() => window.scrollTo(0, scrollAlvo));
+      } else {
+        toggleArea(0); // abre primeira área no carregamento inicial
+      }
     }
 
     function renderArea(area, ai) {
@@ -314,13 +331,21 @@
     function renderOcCard(oc) {
       const foto1 = oc.foto_1_signed || oc.foto_1_url;
       const foto2 = oc.foto_2_signed || oc.foto_2_url;
+      const descHtml = oc.descricao
+        ? `<div class="oc-desc">${oc.descricao}</div>`
+        : `<div class="oc-desc oc-vazio">Descrever a ocorrência</div>`;
+      const recHtml = oc.recomendacao
+        ? `<div class="oc-rec-label">Recomendações</div><div class="oc-rec">${oc.recomendacao}</div>`
+        : ['atencao','critico'].includes(oc.status)
+          ? `<div class="oc-rec-label">Recomendações</div><div class="oc-rec oc-vazio">Descrever recomendações</div>`
+          : '';
       return `
         <div class="oc-card ${oc.status || ''}">
           <div class="oc-top">
             <div>
               <div class="oc-num">Ocorrência ${oc.numero_ocorrencia}</div>
-              <div class="oc-desc">${oc.descricao}</div>
-              ${oc.recomendacao ? `<div class="oc-rec-label">Recomendações</div><div class="oc-rec">${oc.recomendacao}</div>` : ''}
+              ${descHtml}
+              ${recHtml}
             </div>
             ${editavel ? `
             <div class="oc-acoes">
@@ -411,6 +436,7 @@
           await ocorrencias.criar(visId, body);
         }
         fecharModal();
+        captureEstado();
         carregar();
       } catch (err) {
         erro.textContent = err.message;
@@ -422,7 +448,7 @@
 
     window.deletarOc = async (id) => {
       if (!await dialogo('Excluir esta ocorrência?', { cancelar: true })) return;
-      try { await ocorrencias.deletar(id); carregar(); }
+      try { await ocorrencias.deletar(id); captureEstado(); carregar(); }
       catch (err) { await dialogo(err.message); }
     };
 
@@ -444,6 +470,7 @@
         const d = await r.json();
         if (!r.ok) throw new Error(d.error || 'Erro no upload');
         document.getElementById('file-input').value = '';
+        captureEstado();
         carregar();
       } catch (err) { await dialogo(err.message); }
     };
@@ -456,6 +483,7 @@
       });
       const d = await r.json();
       if (!r.ok) { await dialogo(d.error); return; }
+      captureEstado();
       carregar();
     };
 
