@@ -355,24 +355,26 @@ body {
 }
 .btn-concluido:active { transform: scale(.98); }
 
-/* ── Barra colapsar tudo ─────────────────────────────────────── */
-.collapse-bar {
-  display: flex;
-  justify-content: flex-end;
-  padding: 4px 16px;
-  background: var(--bg);
-}
-.btn-colapsar {
-  background: none;
+/* ── Botão flutuante: colapsar tudo ─────────────────────────── */
+.btn-fab-colapsar {
+  position: fixed;
+  bottom: 90px;
+  right: 16px;
+  z-index: 90;
+  background: rgba(27, 58, 107, 0.82);
+  color: #fff;
   border: none;
-  color: var(--text-muted);
-  font-size: 12px;
-  font-weight: 600;
+  border-radius: 20px;
+  padding: 7px 13px;
+  font-size: 13px;
+  font-weight: 700;
   cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 6px;
+  letter-spacing: .5px;
+  box-shadow: 0 2px 10px rgba(27,58,107,.25);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
-.btn-colapsar:active { background: var(--border); }
+.btn-fab-colapsar:active { transform: scale(.94); }
 
 /* ── Botão adicionar ocorrência ──────────────────────────────── */
 .btn-add-oc {

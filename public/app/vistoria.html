@@ -91,17 +91,15 @@
   <div class="progress-bar"><div class="progress-fill" id="prog-fill" style="width:0%"></div></div>
   <div class="progress-txt" id="prog-txt"></div>
 
-  <!-- Barra de controle -->
-  <div class="collapse-bar">
-    <button class="btn-colapsar" onclick="colapsarTudo()">↑ Colapsar tudo</button>
-  </div>
-
   <!-- Áreas + Itens -->
   <div id="checklist"></div>
 
   <!-- Input file oculto para câmera -->
   <input type="file" id="file-input" accept="image/*" capture="environment"
     style="display:none" onchange="onFotoCapturada()" />
+
+  <!-- Botão flutuante: colapsar tudo -->
+  <button class="btn-fab-colapsar" onclick="colapsarTudo()" title="Colapsar tudo">↑↑</button>
 
   <div class="pb-bar"></div>
 
