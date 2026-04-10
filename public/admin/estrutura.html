@@ -93,6 +93,15 @@
             </div>
             <h2 class="page-title" id="titulo-unidade">Estrutura de Vistoria</h2>
           </div>
+          <div class="col-auto ms-auto d-flex align-items-center gap-3">
+            <div class="text-end">
+              <div class="text-muted small" id="ultima-versao-info" style="font-size:12px;line-height:1.4"></div>
+            </div>
+            <button class="btn btn-success" id="btn-publicar" onclick="publicarEstrutura()">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7 18a4.6 4.4 0 0 1 0 -9a5 4.5 0 0 1 11 2h1a3.5 3.5 0 0 1 0 7h-1"/><polyline points="9 15 12 12 15 15"/><line x1="12" y1="12" x2="12" y2="21"/></svg>
+              Publicar Estrutura
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -194,7 +203,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/js/tabler.min.js"></script>
   <script type="module">
     import { requireLogin, requireRole, getUser, auth } from '/js/api.js';
-    import { unidades, itens, estrutura } from '/js/api.js';
+    import { unidades, itens, estrutura as estruturaApi } from '/js/api.js';
 
     requireLogin();
     requireRole('admin');
@@ -227,12 +236,42 @@
       } catch { /* ok */ }
 
       carregarAreas();
+      carregarUltimaVersao();
     }
+
+    async function carregarUltimaVersao() {
+      try {
+        const res = await estruturaApi.ultimaVersao(unidadeId);
+        const div = document.getElementById('ultima-versao-info');
+        if (res.data) {
+          const dt = new Date(res.data.criado_em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+          const autor = res.data.perfis?.nome || '';
+          div.innerHTML = `Última publicação: <strong>${dt}</strong>${autor ? `<br>por ${autor}` : ''}`;
+        } else {
+          div.textContent = 'Nenhuma versão publicada ainda';
+        }
+      } catch { /* ok */ }
+    }
+
+    window.publicarEstrutura = async () => {
+      if (!confirm('Publicar a estrutura atual? As novas vistorias usarão esta versão.')) return;
+      const btn = document.getElementById('btn-publicar');
+      btn.disabled = true;
+      try {
+        await estruturaApi.publicarEstrutura(unidadeId);
+        await carregarUltimaVersao();
+        alert('Estrutura publicada com sucesso!');
+      } catch (err) {
+        alert('Erro ao publicar: ' + err.message);
+      } finally {
+        btn.disabled = false;
+      }
+    };
 
     async function carregarAreas() {
       const div = document.getElementById('lista-areas');
       try {
-        const res  = await estrutura.listarAreas(unidadeId);
+        const res  = await estruturaApi.listarAreas(unidadeId);
         const lista = res.data || [];
 
         if (!lista.length) {
@@ -282,7 +321,7 @@
       const div = document.getElementById('lista-itens');
       div.innerHTML = '<div class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm me-2" role="status"></div>Carregando...</div>';
       try {
-        const res = await estrutura.listarItens(areaAtiva.id);
+        const res = await estruturaApi.listarItens(areaAtiva.id);
         itensDaArea = res.data || [];
 
         if (!itensDaArea.length) {
@@ -330,8 +369,8 @@
       btn.disabled = true;
       erro.classList.add('d-none');
       try {
-        if (editandoAreaId) await estrutura.editarArea(editandoAreaId, { nome });
-        else                await estrutura.criarArea(unidadeId, { nome });
+        if (editandoAreaId) await estruturaApi.editarArea(editandoAreaId, { nome });
+        else                await estruturaApi.criarArea(unidadeId, { nome });
         fecharModalArea();
         carregarAreas();
       } catch (err) {
@@ -344,8 +383,8 @@
 
     window.toggleArea = async (id, ativo) => {
       try {
-        if (ativo) await estrutura.desativarArea(id);
-        else       await estrutura.ativarArea(id);
+        if (ativo) await estruturaApi.desativarArea(id);
+        else       await estruturaApi.ativarArea(id);
         carregarAreas();
       } catch (err) { alert(err.message); }
     };
@@ -398,7 +437,7 @@
       const btn = document.getElementById('btn-confirmar-item');
       btn.disabled = true;
       try {
-        await estrutura.adicionarItem(areaAtiva.id, { item_id: itemSelecionado });
+        await estruturaApi.adicionarItem(areaAtiva.id, { item_id: itemSelecionado });
         fecharModalAddItem();
         carregarItensArea();
       } catch (err) {
@@ -411,7 +450,7 @@
     window.removerItem = async (areaItemId) => {
       if (!confirm('Remover este item da área?')) return;
       try {
-        await estrutura.removerItem(areaItemId);
+        await estruturaApi.removerItem(areaItemId);
         carregarItensArea();
       } catch (err) { alert(err.message); }
     };
