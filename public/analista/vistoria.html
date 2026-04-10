@@ -206,7 +206,6 @@
     let uploadOcId   = null;
     let uploadSlot   = null;
     let editavel     = false;
-    let estadoSalvo  = null;
 
     const getModal = () => window.bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-oc'));
 
@@ -219,7 +218,7 @@
     });
 
     // ── Carrega vistoria ───────────────────────────
-    async function carregar() {
+    async function carregar(preservar = false) {
       try {
         const token = localStorage.getItem('token');
         const r = await fetch(`/api/vistorias/${visId}/checklist`, {
@@ -229,7 +228,7 @@
         if (!r.ok) throw new Error(d.error || 'Erro ao carregar');
         editavel = d.vistoria.status === 'em_andamento';
         renderHeader(d.vistoria);
-        renderChecklist(d.areas);
+        renderChecklist(d.areas, preservar);
       } catch (err) {
         document.getElementById('h-titulo').textContent = 'Erro ao carregar vistoria';
         console.error(err);
@@ -267,26 +266,27 @@
     }
 
     // ── Checklist ──────────────────────────────────
-    function captureEstado() {
-      const abertas = [];
-      document.querySelectorAll('.area-body').forEach((el, i) => {
-        if (el.classList.contains('open')) abertas.push(i);
-      });
-      estadoSalvo = { scrollY: window.scrollY, abertas };
-    }
-
-    function renderChecklist(areas) {
+    function renderChecklist(areas, preservar = false) {
       const div = document.getElementById('checklist-areas');
+
+      // Captura estado ANTES de destruir o DOM — sem nenhum await no meio
+      let estado = null;
+      if (preservar) {
+        const abertas = [];
+        document.querySelectorAll('.area-body').forEach((el, i) => {
+          if (el.classList.contains('open')) abertas.push(i);
+        });
+        estado = { scrollY: window.scrollY, abertas };
+      }
+
       if (!areas?.length) {
         div.innerHTML = '<div class="text-center text-muted py-5">Nenhuma área configurada.</div>';
         return;
       }
       div.innerHTML = areas.map((area, ai) => renderArea(area, ai)).join('');
-      if (estadoSalvo) {
-        estadoSalvo.abertas.forEach(i => toggleArea(i));
-        const scrollAlvo = estadoSalvo.scrollY;
-        estadoSalvo = null;
-        requestAnimationFrame(() => window.scrollTo(0, scrollAlvo));
+      if (estado) {
+        estado.abertas.forEach(i => toggleArea(i));
+        requestAnimationFrame(() => window.scrollTo(0, estado.scrollY));
       } else {
         toggleArea(0); // abre primeira área no carregamento inicial
       }
@@ -340,7 +340,7 @@
           ? `<div class="oc-rec-label">Recomendações</div><div class="oc-rec oc-vazio">Descrever recomendações</div>`
           : '';
       return `
-        <div class="oc-card ${oc.status || ''}">
+        <div class="oc-card ${oc.status || ''}" data-oc-id="${oc.id}">
           <div class="oc-top">
             <div>
               <div class="oc-num">Ocorrência ${oc.numero_ocorrencia}</div>
@@ -430,14 +430,15 @@
         const body = { descricao, status, recomendacao: recomendacao || null, origem: 'web' };
         if (editandoOcId) {
           await ocorrencias.editar(editandoOcId, body);
+          fecharModal();
+          atualizarCardEditado(editandoOcId, descricao, status, recomendacao || null);
         } else {
           body.area_id = contextoOc.areaId;
           body.item_id = contextoOc.itemId;
           await ocorrencias.criar(visId, body);
+          fecharModal();
+          carregar(true);
         }
-        fecharModal();
-        captureEstado();
-        carregar();
       } catch (err) {
         erro.textContent = err.message;
         erro.classList.remove('d-none');
@@ -446,9 +447,45 @@
       }
     };
 
+    function atualizarCardEditado(id, descricao, status, recomendacao) {
+      const card = document.querySelector(`.oc-card[data-oc-id="${id}"]`);
+      if (!card) { carregar(true); return; } // fallback: não encontrou o card
+
+      // Status: cor da borda/fundo
+      card.className = `oc-card ${status}`;
+
+      // Descrição
+      const descEl = card.querySelector('.oc-desc');
+      if (descEl) {
+        descEl.className = descricao ? 'oc-desc' : 'oc-desc oc-vazio';
+        descEl.textContent = descricao || 'Descrever a ocorrência';
+      }
+
+      // Recomendação: remove elementos antigos e reinsere conforme novo status
+      const topDiv = card.querySelector('.oc-top > div');
+      card.querySelectorAll('.oc-rec-label, .oc-rec').forEach(el => el.remove());
+      if (['atencao', 'critico'].includes(status)) {
+        const lbl = document.createElement('div');
+        lbl.className = 'oc-rec-label';
+        lbl.textContent = 'Recomendações';
+        topDiv.appendChild(lbl);
+        const rec = document.createElement('div');
+        rec.className = recomendacao ? 'oc-rec' : 'oc-rec oc-vazio';
+        rec.textContent = recomendacao || 'Descrever recomendações';
+        topDiv.appendChild(rec);
+      }
+
+      // Atualiza onclick do botão Editar com os dados novos
+      const editBtn = card.querySelector('.btn-ghost-secondary');
+      if (editBtn) {
+        editBtn.setAttribute('onclick',
+          `abrirEdicao('${id}','${esc(descricao || '')}','${status}','${esc(recomendacao || '')}')`);
+      }
+    }
+
     window.deletarOc = async (id) => {
       if (!await dialogo('Excluir esta ocorrência?', { cancelar: true })) return;
-      try { await ocorrencias.deletar(id); captureEstado(); carregar(); }
+      try { await ocorrencias.deletar(id); carregar(true); }
       catch (err) { await dialogo(err.message); }
     };
 
@@ -470,8 +507,7 @@
         const d = await r.json();
         if (!r.ok) throw new Error(d.error || 'Erro no upload');
         document.getElementById('file-input').value = '';
-        captureEstado();
-        carregar();
+        carregar(true);
       } catch (err) { await dialogo(err.message); }
     };
 
@@ -483,8 +519,7 @@
       });
       const d = await r.json();
       if (!r.ok) { await dialogo(d.error); return; }
-      captureEstado();
-      carregar();
+      carregar(true);
     };
 
     window.verFoto = (url) => window.open(url, '_blank');
