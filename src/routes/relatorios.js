@@ -334,7 +334,7 @@ router.get('/vistorias/:id/pdf', requireAuth, async (req, res) => {
 
     let logoBuf = vistoriaLogoBuf;
     if (unidade?.logo_url) {
-      const { data: s } = await supabase.storage.from('logos').createSignedUrl(unidade.logo_url, 300);
+      const { data: s } = await supabase.storage.from('fotos').createSignedUrl(unidade.logo_url, 300);
       if (s?.signedUrl) { const b = await fetchImageBuffer(s.signedUrl); if (b) logoBuf = b; }
     }
 
@@ -421,7 +421,7 @@ router.get('/vistorias/:id/pdf/pendencias', requireAuth, async (req, res) => {
 
     let logoBuf = vistoriaLogoBuf;
     if (unidade?.logo_url) {
-      const { data: s } = await supabase.storage.from('logos').createSignedUrl(unidade.logo_url, 300);
+      const { data: s } = await supabase.storage.from('fotos').createSignedUrl(unidade.logo_url, 300);
       if (s?.signedUrl) { const b = await fetchImageBuffer(s.signedUrl); if (b) logoBuf = b; }
     }
 
