@@ -138,7 +138,9 @@ export const estrutura = {
   listarItens:   (area_id)          => apiFetch(`/api/areas/${area_id}/itens`),
   adicionarItem: (area_id, body)    => apiFetch(`/api/areas/${area_id}/itens`,     { method: 'POST',   body: JSON.stringify(body) }),
   removerItem:   (area_item_id)     => apiFetch(`/api/area-itens/${area_item_id}`, { method: 'DELETE' }),
-  checklist:     (unidade_id)       => apiFetch(`/api/unidades/${unidade_id}/checklist`)
+  checklist:          (unidade_id) => apiFetch(`/api/unidades/${unidade_id}/checklist`),
+  publicarEstrutura:  (unidade_id) => apiFetch(`/api/unidades/${unidade_id}/estrutura/publicar`, { method: 'POST' }),
+  ultimaVersao:       (unidade_id) => apiFetch(`/api/unidades/${unidade_id}/estrutura/versoes/ultima`)
 };
 
 // ── Áreas ──────────────────────────────────────────────────────

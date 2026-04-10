@@ -31,13 +31,23 @@ router.post('/', requireAuth, async (req, res) => {
       return res.status(403).json({ error: 'Sem permissão para criar vistorias' });
     }
 
+    // Vincula à última versão de estrutura publicada (se existir)
+    const { data: ultimaVersao } = await supabase
+      .from('estrutura_versoes')
+      .select('id')
+      .eq('unidade_id', unidade_id)
+      .order('criado_em', { ascending: false })
+      .limit(1)
+      .single();
+
     const { data, error } = await supabase
       .from('vistorias')
       .insert({
         unidade_id,
         criado_por: req.user.id,
         status: 'em_andamento',
-        data_criacao: new Date().toISOString()
+        data_criacao: new Date().toISOString(),
+        estrutura_versao_id: ultimaVersao?.id || null
       })
       .select()
       .single();
@@ -140,15 +150,38 @@ router.get('/:id/checklist', requireAuth, async (req, res) => {
 
     if (errVis || !vis) return res.status(404).json({ error: 'Vistoria não encontrada' });
 
-    // 2. Busca áreas ativas da unidade com seus itens
-    const { data: areas, error: errAreas } = await supabase
-      .from('areas')
-      .select('id, nome, ordem, area_itens(id, item_id, ordem, itens_verificacao(id, descricao))')
-      .eq('unidade_id', vis.unidade_id)
-      .eq('ativo', true)
-      .order('ordem');
+    // 2. Busca estrutura — usa snapshot vinculado à vistoria se disponível
+    let areasList;
 
-    if (errAreas) throw errAreas;
+    if (vis.estrutura_versao_id) {
+      const { data: versao, error: errVersao } = await supabase
+        .from('estrutura_versoes')
+        .select('estrutura')
+        .eq('id', vis.estrutura_versao_id)
+        .single();
+      if (errVersao) throw errVersao;
+      areasList = versao?.estrutura || [];
+    } else {
+      const { data: areas, error: errAreas } = await supabase
+        .from('areas')
+        .select('id, nome, ordem, area_itens(id, item_id, ordem, itens_verificacao(id, descricao))')
+        .eq('unidade_id', vis.unidade_id)
+        .eq('ativo', true)
+        .order('ordem');
+      if (errAreas) throw errAreas;
+      areasList = (areas || []).map(area => ({
+        area_id:   area.id,
+        area_nome: area.nome,
+        itens: (area.area_itens || [])
+          .sort((a, b) => a.ordem - b.ordem)
+          .map(ai => ({
+            area_item_id: ai.id,
+            item_id:      ai.item_id,
+            descricao:    ai.itens_verificacao?.descricao || '',
+            ordem:        ai.ordem
+          }))
+      }));
+    }
 
     // 3. Busca ocorrências da vistoria com URLs assinadas
     const { data: ocorrencias, error: errOcs } = await supabase
@@ -182,17 +215,15 @@ router.get('/:id/checklist', requireAuth, async (req, res) => {
     }
 
     // 6. Monta estrutura areas → itens → ocorrências
-    const estrutura = (areas || []).map(area => ({
-      area_id:   area.id,
-      area_nome: area.nome,
-      itens: (area.area_itens || [])
-        .sort((a, b) => a.ordem - b.ordem)
-        .map(ai => ({
-          area_item_id: ai.id,
-          item_id:      ai.item_id,
-          descricao:    ai.itens_verificacao?.descricao || '',
-          ocorrencias:  ocsPorItem[`${area.id}_${ai.item_id}`] || []
-        }))
+    const estrutura = areasList.map(area => ({
+      area_id:   area.area_id,
+      area_nome: area.area_nome,
+      itens: (area.itens || []).map(item => ({
+        area_item_id: item.area_item_id,
+        item_id:      item.item_id,
+        descricao:    item.descricao || '',
+        ocorrencias:  ocsPorItem[`${area.area_id}_${item.item_id}`] || []
+      }))
     }));
 
     return res.json({

@@ -143,10 +143,41 @@ async function prepFotos(ocorrencias) {
 
 // ── Busca estrutura agrupada ──────────────────────────────────────────────────
 async function fetchEstrutura(visId, unidadeId, filtro = null) {
-  const { data: areas } = await supabase
-    .from('areas')
-    .select('id, nome, ordem, area_itens(id, item_id, ordem, itens_verificacao(id, descricao))')
-    .eq('unidade_id', unidadeId).eq('ativo', true).order('ordem');
+  // Verifica se a vistoria tem snapshot de estrutura vinculado
+  const { data: vis } = await supabase
+    .from('vistorias')
+    .select('estrutura_versao_id')
+    .eq('id', visId)
+    .single();
+
+  let areasList;
+
+  if (vis?.estrutura_versao_id) {
+    const { data: versao } = await supabase
+      .from('estrutura_versoes')
+      .select('estrutura')
+      .eq('id', vis.estrutura_versao_id)
+      .single();
+    areasList = versao?.estrutura || [];
+  } else {
+    const { data: areas } = await supabase
+      .from('areas')
+      .select('id, nome, ordem, area_itens(id, item_id, ordem, itens_verificacao(id, descricao))')
+      .eq('unidade_id', unidadeId).eq('ativo', true).order('ordem');
+    areasList = (areas || []).map(area => ({
+      area_id:    area.id,
+      area_nome:  area.nome,
+      area_ordem: area.ordem,
+      itens: (area.area_itens || [])
+        .sort((a, b) => a.ordem - b.ordem)
+        .map(ai => ({
+          area_item_id: ai.id,
+          item_id:      ai.item_id,
+          descricao:    ai.itens_verificacao?.descricao || '',
+          ordem:        ai.ordem
+        }))
+    }));
+  }
 
   let q = supabase.from('ocorrencias').select('*').eq('vistoria_id', visId).order('numero_ocorrencia');
   if (filtro) q = q.in('status', filtro);
@@ -161,19 +192,20 @@ async function fetchEstrutura(visId, unidadeId, filtro = null) {
     ocMap[k].push(oc);
   }
 
-  return (areas || []).map(area => ({
-    area_id:    area.id,
-    area_nome:  area.nome,
-    area_ordem: area.ordem,
-    itens: (area.area_itens || [])
-      .sort((a, b) => a.ordem - b.ordem)
-      .map(ai => ({
-        item_id:   ai.item_id,
-        descricao: ai.itens_verificacao?.descricao || '',
-        ocs:       ocMap[`${area.id}_${ai.item_id}`] || []
-      }))
-      .filter(item => item.ocs.length > 0)
-  })).filter(area => area.itens.length > 0);
+  return areasList
+    .map(area => ({
+      area_id:    area.area_id,
+      area_nome:  area.area_nome,
+      area_ordem: area.area_ordem || 0,
+      itens: (area.itens || [])
+        .map(item => ({
+          item_id:   item.item_id,
+          descricao: item.descricao || '',
+          ocs:       ocMap[`${area.area_id}_${item.item_id}`] || []
+        }))
+        .filter(item => item.ocs.length > 0)
+    }))
+    .filter(area => area.itens.length > 0);
 }
 
 // ── Renderiza uma ocorrência ──────────────────────────────────────────────────

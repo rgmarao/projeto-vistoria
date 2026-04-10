@@ -197,6 +197,78 @@ router.delete('/area-itens/:id', requireAuth, async (req, res) => {
 });
 
 // ─────────────────────────────────────────
+// POST /api/unidades/:id/estrutura/publicar
+// Salva snapshot da estrutura atual como nova versão
+// Perfil: admin
+// ─────────────────────────────────────────
+router.post('/unidades/:id/estrutura/publicar', requireAuth, async (req, res) => {
+  const { id } = req.params;
+
+  const { data: perfil } = await supabase
+    .from('perfis').select('perfil').eq('id', req.user.id).single();
+
+  if (!perfil || perfil.perfil !== 'admin') {
+    return res.status(403).json({ ok: false, error: 'Apenas administradores podem publicar estruturas' });
+  }
+
+  const { data: areas, error: errAreas } = await supabase
+    .from('areas')
+    .select(`
+      id, nome, ordem,
+      area_itens (
+        id, ordem, item_id,
+        itens_verificacao (id, descricao)
+      )
+    `)
+    .eq('unidade_id', id)
+    .eq('ativo', true)
+    .order('ordem');
+
+  if (errAreas) return res.status(500).json({ ok: false, error: errAreas.message });
+
+  const snapshot = (areas || []).map(area => ({
+    area_id:    area.id,
+    area_nome:  area.nome,
+    area_ordem: area.ordem,
+    itens: (area.area_itens || [])
+      .sort((a, b) => a.ordem - b.ordem)
+      .map(ai => ({
+        area_item_id: ai.id,
+        item_id:      ai.item_id,
+        descricao:    ai.itens_verificacao?.descricao || '',
+        ordem:        ai.ordem
+      }))
+  }));
+
+  const { data, error } = await supabase
+    .from('estrutura_versoes')
+    .insert({ unidade_id: id, estrutura: snapshot, criado_por: req.user.id })
+    .select()
+    .single();
+
+  if (error) return res.status(400).json({ ok: false, error: error.message });
+  return res.status(201).json({ ok: true, data });
+});
+
+// ─────────────────────────────────────────
+// GET /api/unidades/:id/estrutura/versoes/ultima
+// Retorna metadados da última versão publicada
+// ─────────────────────────────────────────
+router.get('/unidades/:id/estrutura/versoes/ultima', requireAuth, async (req, res) => {
+  const { id } = req.params;
+
+  const { data } = await supabase
+    .from('estrutura_versoes')
+    .select('id, criado_em, criado_por, perfis(nome)')
+    .eq('unidade_id', id)
+    .order('criado_em', { ascending: false })
+    .limit(1)
+    .single();
+
+  return res.json({ ok: true, data: data || null });
+});
+
+// ─────────────────────────────────────────
 // GET /api/unidades/:id/checklist
 // Estrutura completa (áreas + itens agrupados) — usada pelo app
 // ─────────────────────────────────────────
