@@ -109,6 +109,49 @@ PORT                  # Porta do servidor (padrão: 5000)
 
 ---
 
+## 4.1 AMBIENTES E BRANCHES
+
+### Ambientes
+
+| Ambiente | Replit | Supabase | Branch Git |
+|----------|--------|----------|-----------|
+| Produção | `projeto-vistoria` | `awebfejydsabfnsxnksx.supabase.co` | `main` |
+| Desenvolvimento | `vistoria-dev` | `eiklerbtysfazgmhvkef.supabase.co` | `dev` |
+
+> Cada Replit tem seus próprios Secrets apontando para o Supabase correto. **NUNCA** alterar Secrets para apontar para o ambiente errado.
+
+### Estratégia de Branches
+
+```
+main:  ──●──●──────────────────●──●──── (produção + correções rápidas)
+            \                 ↗
+dev:         ──●──●──●──●──●──  (novas funcionalidades)
+```
+
+| Cenário | Branch | Onde testa | Quando vai pra main |
+|---------|--------|-----------|---------------------|
+| Nova funcionalidade | `dev` | Replit vistoria-dev | Quando testado e aprovado |
+| Correção rápida em produção | `main` | Replit projeto-vistoria | Imediatamente |
+
+### Promoção DEV → PROD
+
+```bash
+git checkout main
+git merge dev
+git push origin main
+# Depois, no Replit produção: git pull origin main
+```
+
+### Usuários de teste (apenas DEV)
+
+| Email | Senha | Perfil |
+|-------|-------|--------|
+| `admin@vistoria-dev.com` | `Dev@123` | admin |
+| `analista@vistoria-dev.com` | `Dev@123` | analista |
+| `usuario@vistoria-dev.com` | `Dev@123` | usuario |
+
+---
+
 ## 5. BANCO DE DADOS — TABELAS E CAMPOS
 
 ### `empresas`
