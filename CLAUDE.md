@@ -2,6 +2,14 @@
 
 > Este arquivo é lido no início de toda nova sessão. Contém o contexto completo do projeto para que não seja necessário reexplicar nada.
 
+## INSTRUÇÃO PARA NOVA SESSÃO
+
+**Ao iniciar qualquer sessão, ANTES de qualquer ação, perguntar:**
+
+> "Olá! Antes de começar — vamos trabalhar em **desenvolvimento (branch `dev`)** ou em **produção (branch `main`)**?"
+
+Após a resposta, executar `git checkout dev` ou `git checkout main` conforme indicado e confirmar o branch ativo.
+
 ---
 
 ## 1. SOBRE O PROJETO
