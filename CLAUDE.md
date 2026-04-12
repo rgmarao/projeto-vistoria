@@ -23,7 +23,7 @@
 | Banco de dados | Supabase (PostgreSQL) |
 | Autenticação | Supabase Auth (JWT via Bearer token) |
 | Upload de fotos | Multer (memória) + Supabase Storage (bucket: `fotos`) |
-| Upload de logos | Multer (memória) + Supabase Storage (bucket: `logos`) |
+| Upload de logos | Multer (memória) + Supabase Storage (bucket: `fotos`, prefixo `unidades/`) |
 | PDF | PDFKit v0.18 |
 | Frontend Web | HTML + CSS + JS vanilla (sem framework) |
 | UI Web | Tabler Bootstrap (analista/admin) |
@@ -115,29 +115,34 @@ PORT                  # Porta do servidor (padrão: 5000)
 | Campo | Tipo | Descrição |
 |-------|------|-----------|
 | id | uuid PK | |
-| nome | text | |
+| nome | text | NOT NULL |
+| cnpj | text | NULLABLE |
+| logo_url | text | Path no bucket `fotos` (NULLABLE) |
 | ativo | boolean | default true |
-| criado_em | timestamptz | |
+| criado_em | timestamptz | NOT NULL |
+| atualizado_em | timestamptz | NULLABLE, setado pelo trigger |
 
 ### `unidades`
 | Campo | Tipo | Descrição |
 |-------|------|-----------|
 | id | uuid PK | |
-| empresa_id | uuid FK → empresas | |
-| nome | text | |
-| endereco | text | |
-| logo_url | text | Path no bucket `logos` |
+| empresa_id | uuid FK → empresas | NOT NULL |
+| nome | text | NOT NULL |
+| endereco | text | NULLABLE |
+| logo_url | text | Path no bucket `fotos` (prefixo `unidades/{id}/`) |
 | ativo | boolean | default true |
-| criado_em | timestamptz | |
+| criado_em | timestamptz | NOT NULL |
+| atualizado_em | timestamptz | NULLABLE, setado pelo trigger |
 
 ### `perfis`
 | Campo | Tipo | Descrição |
 |-------|------|-----------|
-| id | uuid PK | Mesmo UUID do Supabase Auth |
-| nome | text | Nome completo do usuário |
-| perfil | text | 'admin' \| 'analista' \| 'usuario' |
+| id | uuid PK | FK → auth.users(id), mesmo UUID do Supabase Auth |
+| nome | text | Nome completo do usuário, NOT NULL |
+| perfil | text | CHECK: 'admin' \| 'analista' \| 'usuario', default 'usuario' |
 | ativo | boolean | default true |
-| criado_em | timestamptz | |
+| criado_em | timestamptz | NOT NULL |
+| atualizado_em | timestamptz | NULLABLE, setado pelo trigger |
 
 > **Login** retorna `{ user: { id, email, nome, role }, token }`. O campo `nome` vem da tabela `perfis`, não do Supabase Auth metadata.
 
@@ -154,11 +159,14 @@ PORT                  # Porta do servidor (padrão: 5000)
 | Campo | Tipo | Descrição |
 |-------|------|-----------|
 | id | uuid PK | |
-| unidade_id | uuid FK → unidades | |
-| criado_por | uuid FK → perfis | Analista responsável |
-| status | text | 'em_andamento' \| 'finalizada' \| 'publicada' |
-| data_criacao | timestamptz | |
-| data_finalizacao | timestamptz | |
+| unidade_id | uuid FK → unidades | NOT NULL |
+| criado_por | uuid FK → perfis | Analista responsável, NOT NULL |
+| estrutura_versao_id | uuid FK → estrutura_versoes | NULLABLE — snapshot vinculado na criação |
+| status | text | CHECK: 'em_andamento' \| 'finalizada' \| 'publicada', default 'em_andamento' |
+| data_criacao | timestamptz | NOT NULL |
+| data_finalizacao | timestamptz | NULLABLE |
+| data_publicacao | timestamptz | NULLABLE |
+| atualizado_em | timestamptz | NULLABLE, setado pelo trigger |
 
 ### `ocorrencias`
 | Campo | Tipo | Descrição |
@@ -172,23 +180,26 @@ PORT                  # Porta do servidor (padrão: 5000)
 | status | text | CHECK: 'ok' \| 'atencao' \| 'critico' |
 | recomendacao | text | |
 | origem | text | CHECK: 'vistoria' \| 'morador' \| 'web' \| 'app' |
-| foto_1_url | text | Path no bucket `fotos` |
-| foto_2_url | text | Path no bucket `fotos` |
-| criado_em | timestamptz | |
+| foto_1_url | text | Path no bucket `fotos` (prefixo `ocorrencias/{id}/`) |
+| foto_2_url | text | Path no bucket `fotos` (prefixo `ocorrencias/{id}/`) |
+| criado_em | timestamptz | NOT NULL |
+| atualizado_em | timestamptz | NULLABLE, setado pelo trigger |
 
 **Constraints:**
 - `ocorrencias_status_check`: valores permitidos: `'ok'`, `'atencao'`, `'critico'`
 - `ocorrencias_origem_check`: valores permitidos: `'vistoria'`, `'morador'`, `'web'`, `'app'`
 - `area_id` e `item_id` são **NULLABLE** (ocorrência pode existir sem área/item)
+- UNIQUE `(vistoria_id, numero_ocorrencia)`
 
 ### `areas`
 | Campo | Tipo | Descrição |
 |-------|------|-----------|
 | id | uuid PK | |
-| unidade_id | uuid FK → unidades | |
-| nome | text | |
-| ordem | integer | Ordenação na exibição |
+| unidade_id | uuid FK → unidades | NOT NULL |
+| nome | text | NOT NULL |
+| ordem | integer | Ordenação na exibição, default 10 |
 | ativo | boolean | default true |
+| criado_em | timestamptz | NOT NULL |
 
 ### `itens_verificacao`
 | Campo | Tipo | Descrição |
@@ -202,11 +213,22 @@ PORT                  # Porta do servidor (padrão: 5000)
 | Campo | Tipo | Descrição |
 |-------|------|-----------|
 | id | uuid PK | |
-| area_id | uuid FK → areas | |
-| item_id | uuid FK → itens_verificacao | |
-| ordem | integer | Ordenação na exibição |
+| area_id | uuid FK → areas | NOT NULL |
+| item_id | uuid FK → itens_verificacao | NOT NULL |
+| ordem | integer | Ordenação na exibição, default 10 |
 
-> Tabela de junção M:N entre `areas` e `itens_verificacao`. Cada linha representa um item disponível em uma área específica de uma unidade.
+> Tabela de junção M:N entre `areas` e `itens_verificacao`. UNIQUE `(area_id, item_id)`. Cada linha representa um item disponível em uma área específica de uma unidade.
+
+### `estrutura_versoes`
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| id | uuid PK | |
+| unidade_id | uuid FK → unidades | NOT NULL |
+| criado_por | uuid FK → perfis | Admin que publicou a estrutura |
+| estrutura | jsonb | Snapshot da estrutura `areas→itens` no momento da publicação |
+| criado_em | timestamptz | NOT NULL |
+
+> Snapshot imutável da estrutura de uma unidade. Quando uma vistoria é criada, o campo `estrutura_versao_id` na tabela `vistorias` é vinculado à última versão publicada — garantindo que a vistoria reflita a estrutura vigente na época, mesmo que a estrutura mude depois.
 
 ---
 
@@ -267,8 +289,14 @@ PORT                  # Porta do servidor (padrão: 5000)
 | PUT | `/api/areas/:id` | ✅ | Edita área | ✅ |
 | PATCH | `/api/areas/:id/ativar` | ✅ | Ativa área | ✅ |
 | PATCH | `/api/areas/:id/desativar` | ✅ | Desativa área | ✅ |
-| DELETE | `/api/areas/:id` | ✅ | Remove área | ✅ |
+| DELETE | `/api/areas/:id` | ✅ | Remove área (falha se tiver itens) | ✅ |
 | DELETE | `/api/area-itens/:id` | ✅ | Remove vínculo item↔área | ✅ |
+
+### Estrutura — Versões (`/api/unidades/:id/estrutura`)
+| Método | Rota | Auth | Perfil | Descrição | Status |
+|--------|------|------|--------|-----------|--------|
+| POST | `/api/unidades/:id/estrutura/publicar` | ✅ | admin | Grava snapshot da estrutura atual como nova versão | ✅ |
+| GET | `/api/unidades/:id/estrutura/versoes/ultima` | ✅ | todos | Retorna metadados da última versão publicada | ✅ |
 
 ### Itens de Verificação (`/api/itens`)
 | Método | Rota | Auth | Descrição | Status |
@@ -462,3 +490,14 @@ app.use('/api', relatoriosRoutes);
 ### Número de ocorrência — sem `#`
 - Exibir como "Ocorrência 1" (não "#1" nem "#Ocorrência 1")
 - Aplicar tanto na web (`analista/vistoria.html`) quanto no PDF (`relatorios.js`)
+
+### Storage — bucket único `fotos`
+- Existe apenas **um** bucket chamado `fotos` (não há bucket `logos`)
+- Logos de unidades ficam em `fotos` com prefixo `unidades/{unidade_id}/`
+- Fotos de ocorrências ficam em `fotos` com prefixo `ocorrencias/{ocorrencia_id}/`
+- O CLAUDE.md anterior mencionava um bucket `logos` separado — isso estava errado
+
+### estrutura_versoes — snapshot imutável
+- Ao criar uma vistoria, o sistema vincula automaticamente a última versão de estrutura publicada via `estrutura_versao_id`
+- Se não houver versão publicada, `estrutura_versao_id` fica `null` e o checklist usa a estrutura ao vivo
+- Essa tabela foi adicionada após as fases iniciais e não constava no CLAUDE.md original
