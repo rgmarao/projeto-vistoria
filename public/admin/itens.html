@@ -110,6 +110,11 @@
                 </div>
               </div>
               <div class="col-auto">
+                <select id="filtro-grupo" class="form-select" onchange="filtrar()">
+                  <option value="">Todos os grupos</option>
+                </select>
+              </div>
+              <div class="col-auto">
                 <select id="filtro-ativo" class="form-select" onchange="filtrar()">
                   <option value="">Todos</option>
                   <option value="true" selected>Ativos</option>
@@ -127,6 +132,7 @@
               <thead>
                 <tr>
                   <th>Descrição</th>
+                  <th>Grupo</th>
                   <th class="w-1">Status</th>
                   <th class="w-1">Ações</th>
                 </tr>
@@ -157,10 +163,24 @@
         </div>
         <div class="modal-body">
           <div class="alert alert-danger d-none" id="modal-erro"></div>
-          <div class="mb-2">
+          <div class="mb-3">
             <label class="form-label required">Descrição</label>
             <textarea id="campo-descricao" class="form-control" rows="3"
               placeholder="Descreva o item de verificação..."></textarea>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Grupo</label>
+            <input type="text" id="campo-grupo" class="form-control" list="grupos-sugeridos"
+              placeholder="Ex.: Segurança do Trabalho, Infraestrutura..." />
+            <datalist id="grupos-sugeridos">
+              <option value="Combate a Incêndio">
+              <option value="Documentação">
+              <option value="Equipamentos">
+              <option value="Infraestrutura">
+              <option value="Meio Ambiente">
+              <option value="Organização">
+              <option value="Segurança do Trabalho">
+            </datalist>
           </div>
         </div>
         <div class="modal-footer">
@@ -193,19 +213,30 @@
       try {
         const res = await itens.listar();
         todosItens = res.data || [];
+        atualizarFiltroGrupos();
         filtrar();
       } catch (err) {
         document.getElementById('tabela-itens').innerHTML =
-          `<tr><td colspan="3" class="text-danger text-center">${err.message}</td></tr>`;
+          `<tr><td colspan="4" class="text-danger text-center">${err.message}</td></tr>`;
       }
+    }
+
+    function atualizarFiltroGrupos() {
+      const grupos = [...new Set(todosItens.map(i => i.grupo).filter(Boolean))].sort();
+      const sel = document.getElementById('filtro-grupo');
+      const atual = sel.value;
+      sel.innerHTML = '<option value="">Todos os grupos</option>' +
+        grupos.map(g => `<option value="${g}" ${g === atual ? 'selected' : ''}>${g}</option>`).join('');
     }
 
     window.filtrar = () => {
       const busca = document.getElementById('filtro-busca').value.toLowerCase();
       const ativo = document.getElementById('filtro-ativo').value;
+      const grupo = document.getElementById('filtro-grupo').value;
 
       let lista = todosItens;
       if (ativo !== '') lista = lista.filter(i => String(i.ativo) === ativo);
+      if (grupo)        lista = lista.filter(i => i.grupo === grupo);
       if (busca)        lista = lista.filter(i => i.descricao.toLowerCase().includes(busca));
 
       document.getElementById('count-badge').textContent = `(${lista.length})`;
@@ -213,12 +244,13 @@
       const tbody = document.getElementById('tabela-itens');
       if (!lista.length) {
         tbody.innerHTML =
-          '<tr><td colspan="3" class="text-center text-muted py-4">Nenhum item encontrado.</td></tr>';
+          '<tr><td colspan="4" class="text-center text-muted py-4">Nenhum item encontrado.</td></tr>';
         return;
       }
       tbody.innerHTML = lista.map(i => `
         <tr>
           <td>${i.descricao}</td>
+          <td>${i.grupo ? `<span class="badge bg-azure-lt text-azure">${i.grupo}</span>` : '<span class="text-muted">—</span>'}</td>
           <td>
             <span class="badge ${i.ativo ? 'bg-success-lt text-success' : 'bg-danger-lt text-danger'}">
               ${i.ativo ? 'Ativo' : 'Inativo'}
@@ -226,7 +258,7 @@
           </td>
           <td class="text-nowrap">
             <button class="btn btn-sm btn-ghost-secondary"
-              onclick="editar('${i.id}', ${JSON.stringify(i.descricao)})">
+              onclick="editar('${i.id}', ${JSON.stringify(i.descricao)}, ${JSON.stringify(i.grupo || '')})">
               Editar
             </button>
             <button class="btn btn-sm ${i.ativo ? 'btn-ghost-danger' : 'btn-ghost-success'}"
@@ -241,15 +273,17 @@
       editandoId = null;
       document.getElementById('modal-titulo').textContent = 'Novo Item';
       document.getElementById('campo-descricao').value    = '';
+      document.getElementById('campo-grupo').value        = '';
       document.getElementById('modal-erro').classList.add('d-none');
       getModal().show();
       setTimeout(() => document.getElementById('campo-descricao').focus(), 300);
     };
 
-    window.editar = (id, descricao) => {
+    window.editar = (id, descricao, grupo) => {
       editandoId = id;
       document.getElementById('modal-titulo').textContent = 'Editar Item';
       document.getElementById('campo-descricao').value    = descricao;
+      document.getElementById('campo-grupo').value        = grupo || '';
       document.getElementById('modal-erro').classList.add('d-none');
       getModal().show();
     };
@@ -258,6 +292,7 @@
 
     window.salvar = async () => {
       const descricao = document.getElementById('campo-descricao').value.trim();
+      const grupo     = document.getElementById('campo-grupo').value.trim();
       const erroEl    = document.getElementById('modal-erro');
       const btn       = document.getElementById('btn-salvar');
 
@@ -269,8 +304,8 @@
       btn.disabled = true;
       erroEl.classList.add('d-none');
       try {
-        if (editandoId) await itens.editar(editandoId, { descricao });
-        else            await itens.criar({ descricao });
+        if (editandoId) await itens.editar(editandoId, { descricao, grupo: grupo || null });
+        else            await itens.criar({ descricao, grupo: grupo || null });
         fecharModal();
         carregar();
       } catch (err) {

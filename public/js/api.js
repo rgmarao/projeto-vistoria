@@ -121,6 +121,7 @@ export const unidades = {
 // ── Itens de verificação ───────────────────────────────────────
 export const itens = {
   listar:    (ativo)    => apiFetch(`/api/itens${ativo !== undefined ? `?ativo=${ativo}` : ''}`),
+  grupos:    ()         => apiFetch('/api/itens/grupos'),
   criar:     (body)     => apiFetch('/api/itens',       { method: 'POST',   body: JSON.stringify(body) }),
   editar:    (id, body) => apiFetch(`/api/itens/${id}`, { method: 'PUT',    body: JSON.stringify(body) }),
   ativar:    (id)       => apiFetch(`/api/itens/${id}/ativar`,    { method: 'PATCH' }),

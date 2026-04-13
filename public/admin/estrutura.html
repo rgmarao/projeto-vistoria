@@ -197,9 +197,17 @@
         </div>
         <div class="modal-body">
           <div class="alert alert-danger d-none" id="additem-erro"></div>
-          <div class="mb-2">
-            <label class="form-label">Buscar na biblioteca</label>
-            <input type="text" id="busca-item" class="form-control" placeholder="Digite para filtrar..." oninput="filtrarItens()" />
+          <div class="row g-2 mb-2">
+            <div class="col">
+              <label class="form-label">Buscar na biblioteca</label>
+              <input type="text" id="busca-item" class="form-control" placeholder="Digite para filtrar..." oninput="filtrarItens()" />
+            </div>
+            <div class="col-auto">
+              <label class="form-label">Grupo</label>
+              <select id="filtro-grupo-modal" class="form-select" onchange="filtrarItens()">
+                <option value="">Todos</option>
+              </select>
+            </div>
           </div>
           <div class="itens-busca-lista" id="itens-busca-lista"></div>
         </div>
@@ -415,6 +423,13 @@
       itemSelecionado = null;
       document.getElementById('busca-item').value = '';
       document.getElementById('additem-erro').classList.add('d-none');
+
+      // Popula o select de grupo com grupos distintos da biblioteca
+      const grupos = [...new Set(bibliotecaItens.map(i => i.grupo).filter(Boolean))].sort();
+      const sel = document.getElementById('filtro-grupo-modal');
+      sel.innerHTML = '<option value="">Todos</option>' +
+        grupos.map(g => `<option value="${g}">${g}</option>`).join('');
+
       filtrarItens();
       getModalAddItem().show();
       setTimeout(() => document.getElementById('busca-item').focus(), 300);
@@ -427,9 +442,11 @@
 
     window.filtrarItens = () => {
       const busca    = document.getElementById('busca-item').value.toLowerCase();
+      const grupo    = document.getElementById('filtro-grupo-modal').value;
       const jaAssoc  = new Set(itensDaArea.map(i => i.item_id));
       const filtered = bibliotecaItens
         .filter(i => !jaAssoc.has(i.id))
+        .filter(i => !grupo || i.grupo === grupo)
         .filter(i => !busca || i.descricao.toLowerCase().includes(busca));
 
       const div = document.getElementById('itens-busca-lista');
@@ -440,7 +457,8 @@
       div.innerHTML = filtered.map(i => `
         <div class="item-opcao ${itemSelecionado === i.id ? 'selecionado' : ''}"
              onclick="selecionarItemModal('${i.id}', this)">
-          ${i.descricao}
+          <span>${i.descricao}</span>
+          ${i.grupo ? `<span style="font-size:11px;color:#6c757d;margin-left:6px;float:right">${i.grupo}</span>` : ''}
         </div>`).join('');
     };
 

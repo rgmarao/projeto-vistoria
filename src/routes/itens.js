@@ -7,16 +7,17 @@ const router = express.Router();
 // ─────────────────────────────────────────
 // GET /api/itens
 // Lista todos os itens de verificação (biblioteca global)
-// ?ativo=true|false
+// ?ativo=true|false  ?grupo=texto
 // ─────────────────────────────────────────
 router.get('/', requireAuth, async (req, res) => {
   try {
-    const { ativo } = req.query;
+    const { ativo, grupo } = req.query;
     let query = supabase
       .from('itens_verificacao')
-      .select('id, descricao, ativo, criado_em')
+      .select('id, descricao, ativo, grupo, criado_em')
       .order('descricao');
     if (ativo !== undefined) query = query.eq('ativo', ativo === 'true');
+    if (grupo)               query = query.eq('grupo', grupo);
     const { data, error } = await query;
     if (error) throw error;
     res.json({ ok: true, data });
@@ -26,18 +27,41 @@ router.get('/', requireAuth, async (req, res) => {
 });
 
 // ─────────────────────────────────────────
+// GET /api/itens/grupos
+// Retorna lista distinta de grupos (cadastrados)
+// DEVE vir antes de /:id
+// ─────────────────────────────────────────
+router.get('/grupos', requireAuth, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('itens_verificacao')
+      .select('grupo')
+      .not('grupo', 'is', null)
+      .neq('grupo', '');
+    if (error) throw error;
+    const grupos = [...new Set((data || []).map(r => r.grupo))].sort();
+    res.json({ ok: true, data: grupos });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ─────────────────────────────────────────
 // POST /api/itens
 // Cria um item de verificação
+// body: { descricao, grupo? }
 // ─────────────────────────────────────────
 router.post('/', requireAuth, async (req, res) => {
   try {
-    const { descricao } = req.body;
+    const { descricao, grupo } = req.body;
     if (!descricao?.trim()) {
       return res.status(400).json({ ok: false, error: 'Descrição é obrigatória' });
     }
+    const payload = { descricao: descricao.trim(), ativo: true };
+    if (grupo?.trim()) payload.grupo = grupo.trim();
     const { data, error } = await supabase
       .from('itens_verificacao')
-      .insert({ descricao: descricao.trim(), ativo: true })
+      .insert(payload)
       .select()
       .single();
     if (error) throw error;
@@ -49,18 +73,21 @@ router.post('/', requireAuth, async (req, res) => {
 
 // ─────────────────────────────────────────
 // PUT /api/itens/:id
-// Edita a descrição de um item
+// Edita descrição e/ou grupo de um item
+// body: { descricao, grupo? }
 // ─────────────────────────────────────────
 router.put('/:id', requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const { descricao } = req.body;
+    const { descricao, grupo } = req.body;
     if (!descricao?.trim()) {
       return res.status(400).json({ ok: false, error: 'Descrição é obrigatória' });
     }
+    const payload = { descricao: descricao.trim() };
+    payload.grupo = grupo?.trim() || null;
     const { data, error } = await supabase
       .from('itens_verificacao')
-      .update({ descricao: descricao.trim() })
+      .update(payload)
       .eq('id', id)
       .select()
       .single();
