@@ -140,7 +140,9 @@ export const estrutura = {
   removerItem:   (area_item_id)     => apiFetch(`/api/area-itens/${area_item_id}`, { method: 'DELETE' }),
   checklist:          (unidade_id) => apiFetch(`/api/unidades/${unidade_id}/checklist`),
   publicarEstrutura:  (unidade_id) => apiFetch(`/api/unidades/${unidade_id}/estrutura/publicar`, { method: 'POST' }),
-  ultimaVersao:       (unidade_id) => apiFetch(`/api/unidades/${unidade_id}/estrutura/versoes/ultima`)
+  ultimaVersao:       (unidade_id) => apiFetch(`/api/unidades/${unidade_id}/estrutura/versoes/ultima`),
+  reordenarAreas: (unidade_id, ordens) => apiFetch(`/api/unidades/${unidade_id}/areas/reordenar`, { method: 'PATCH', body: JSON.stringify({ ordens }) }),
+  reordenarItens: (area_id, ordens)   => apiFetch(`/api/areas/${area_id}/itens/reordenar`,        { method: 'PATCH', body: JSON.stringify({ ordens }) })
 };
 
 // ── Áreas ──────────────────────────────────────────────────────

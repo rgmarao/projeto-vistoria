@@ -124,6 +124,54 @@ router.delete('/areas/:id', requireAuth, async (req, res) => {
 });
 
 // ─────────────────────────────────────────
+// PATCH /api/unidades/:id/areas/reordenar
+// Atualiza a ordem das áreas em batch
+// body: { ordens: [{ id, ordem }] }
+// ─────────────────────────────────────────
+router.patch('/unidades/:id/areas/reordenar', requireAuth, async (req, res) => {
+  const { id } = req.params;
+  const { ordens } = req.body;
+
+  if (!Array.isArray(ordens) || !ordens.length) {
+    return res.status(400).json({ ok: false, error: 'ordens deve ser um array não vazio' });
+  }
+
+  const updates = ordens.map(({ id: areaId, ordem }) =>
+    supabase.from('areas').update({ ordem }).eq('id', areaId).eq('unidade_id', id)
+  );
+
+  const results = await Promise.all(updates);
+  const falha = results.find(r => r.error);
+  if (falha) return res.status(400).json({ ok: false, error: falha.error.message });
+
+  res.json({ ok: true });
+});
+
+// ─────────────────────────────────────────
+// PATCH /api/areas/:id/itens/reordenar
+// Atualiza a ordem dos itens de uma área em batch
+// body: { ordens: [{ id (area_item_id), ordem }] }
+// ─────────────────────────────────────────
+router.patch('/areas/:id/itens/reordenar', requireAuth, async (req, res) => {
+  const { id } = req.params;
+  const { ordens } = req.body;
+
+  if (!Array.isArray(ordens) || !ordens.length) {
+    return res.status(400).json({ ok: false, error: 'ordens deve ser um array não vazio' });
+  }
+
+  const updates = ordens.map(({ id: areaItemId, ordem }) =>
+    supabase.from('area_itens').update({ ordem }).eq('id', areaItemId).eq('area_id', id)
+  );
+
+  const results = await Promise.all(updates);
+  const falha = results.find(r => r.error);
+  if (falha) return res.status(400).json({ ok: false, error: falha.error.message });
+
+  res.json({ ok: true });
+});
+
+// ─────────────────────────────────────────
 // GET /api/areas/:id/itens
 // Lista itens associados a uma área
 // ─────────────────────────────────────────

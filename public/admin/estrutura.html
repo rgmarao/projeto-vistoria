@@ -53,6 +53,17 @@
     .item-opcao:last-child  { border-bottom: none; }
     .item-opcao:hover       { background: var(--tblr-primary-lt); }
     .item-opcao.selecionado { background: #bbdefb; }
+
+    .grip-handle {
+      color: #adb5bd;
+      cursor: grab;
+      padding: 0 4px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+    }
+    .grip-handle:active { cursor: grabbing; }
+    .sortable-ghost { opacity: .35; background: var(--tblr-primary-lt) !important; }
   </style>
 </head>
 <body class="antialiased">
@@ -201,6 +212,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/js/tabler.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
   <script type="module">
     import { requireLogin, requireRole, getUser, auth } from '/js/api.js';
     import { unidades, itens, estrutura as estruturaApi } from '/js/api.js';
@@ -218,6 +230,10 @@
     let bibliotecaItens  = [];
     let itensDaArea      = [];
     let itemSelecionado  = null;
+    let sortableAreas    = null;
+    let sortableItens    = null;
+
+    const GRIP_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="5" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="9" cy="19" r="1.5"/><circle cx="15" cy="5" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="15" cy="19" r="1.5"/></svg>`;
 
     const getModalArea    = () => window.bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-area'));
     const getModalAddItem = () => window.bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-add-item'));
@@ -281,7 +297,9 @@
 
         div.innerHTML = lista.map(a => `
           <div class="area-item ${areaAtiva?.id === a.id ? 'active' : ''} ${!a.ativo ? 'inativa' : ''}"
+               data-area-id="${a.id}"
                onclick="selecionarArea('${a.id}','${esc(a.nome)}')">
+            <span class="grip-handle" title="Arraste para reordenar">${GRIP_SVG}</span>
             <span class="area-item-nome">${a.nome}${!a.ativo ? ' <em style="font-size:11px;color:#e57373">(inativa)</em>' : ''}</span>
             <div class="area-item-acoes">
               <button class="btn btn-sm btn-ghost-secondary" title="Editar"
@@ -297,6 +315,7 @@
             </div>
           </div>`).join('');
 
+        initSortableAreas();
         if (areaAtiva) selecionarArea(areaAtiva.id, areaAtiva.nome);
 
       } catch (err) {
@@ -330,13 +349,16 @@
         }
 
         div.innerHTML = itensDaArea.map(i => `
-          <div class="item-row">
+          <div class="item-row" data-area-item-id="${i.area_item_id}">
+            <span class="grip-handle" title="Arraste para reordenar">${GRIP_SVG}</span>
             <span class="item-descricao">${i.descricao}</span>
             <button class="btn btn-sm btn-ghost-danger" title="Remover da área"
               onclick="removerItem('${i.area_item_id}')">
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
           </div>`).join('');
+
+        initSortableItens();
       } catch (err) {
         div.innerHTML = `<div class="text-danger text-center py-3">${err.message}</div>`;
       }
@@ -454,6 +476,50 @@
         carregarItensArea();
       } catch (err) { alert(err.message); }
     };
+
+    function initSortableAreas() {
+      if (sortableAreas) sortableAreas.destroy();
+      const el = document.getElementById('lista-areas');
+      if (!el.querySelector('.area-item[data-area-id]')) return;
+      sortableAreas = Sortable.create(el, {
+        animation: 150,
+        handle: '.grip-handle',
+        ghostClass: 'sortable-ghost',
+        onEnd: async ({ oldIndex, newIndex }) => {
+          if (oldIndex === newIndex) return;
+          const els = el.querySelectorAll('.area-item[data-area-id]');
+          const ordens = Array.from(els).map((item, i) => ({ id: item.dataset.areaId, ordem: (i + 1) * 10 }));
+          try {
+            await estruturaApi.reordenarAreas(unidadeId, ordens);
+          } catch (err) {
+            alert('Erro ao reordenar áreas: ' + err.message);
+            carregarAreas();
+          }
+        }
+      });
+    }
+
+    function initSortableItens() {
+      if (sortableItens) sortableItens.destroy();
+      const el = document.getElementById('lista-itens');
+      if (!el.querySelector('.item-row[data-area-item-id]')) return;
+      sortableItens = Sortable.create(el, {
+        animation: 150,
+        handle: '.grip-handle',
+        ghostClass: 'sortable-ghost',
+        onEnd: async ({ oldIndex, newIndex }) => {
+          if (oldIndex === newIndex) return;
+          const els = el.querySelectorAll('.item-row[data-area-item-id]');
+          const ordens = Array.from(els).map((item, i) => ({ id: item.dataset.areaItemId, ordem: (i + 1) * 10 }));
+          try {
+            await estruturaApi.reordenarItens(areaAtiva.id, ordens);
+          } catch (err) {
+            alert('Erro ao reordenar itens: ' + err.message);
+            carregarItensArea();
+          }
+        }
+      });
+    }
 
     window.logout = async () => { await auth.logout(); window.location.href = '/index.html'; };
 
