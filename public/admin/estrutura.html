@@ -223,7 +223,7 @@
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
   <script type="module">
     import { requireLogin, requireRole, getUser, auth } from '/js/api.js';
-    import { unidades, itens, estrutura as estruturaApi } from '/js/api.js';
+    import { unidades, itens, grupos, estrutura as estruturaApi } from '/js/api.js';
 
     requireLogin();
     requireRole('admin');
@@ -255,7 +255,7 @@
       } catch { /* ok */ }
 
       try {
-        const r = await itens.listar(true);
+        const r = await itens.listar({ ativo: true });
         bibliotecaItens = r.data || [];
       } catch { /* ok */ }
 
@@ -419,16 +419,18 @@
       } catch (err) { alert(err.message); }
     };
 
-    window.abrirModalAddItem = () => {
+    window.abrirModalAddItem = async () => {
       itemSelecionado = null;
       document.getElementById('busca-item').value = '';
       document.getElementById('additem-erro').classList.add('d-none');
 
-      // Popula o select de grupo com grupos distintos da biblioteca
-      const grupos = [...new Set(bibliotecaItens.map(i => i.grupo).filter(Boolean))].sort();
-      const sel = document.getElementById('filtro-grupo-modal');
-      sel.innerHTML = '<option value="">Todos</option>' +
-        grupos.map(g => `<option value="${g}">${g}</option>`).join('');
+      // Popula o select de grupo via API
+      try {
+        const res = await grupos.listar(true);
+        const sel = document.getElementById('filtro-grupo-modal');
+        sel.innerHTML = '<option value="">Todos</option>' +
+          (res.data || []).map(g => `<option value="${g.id}">${g.nome}</option>`).join('');
+      } catch { /* ok */ }
 
       filtrarItens();
       getModalAddItem().show();
@@ -442,11 +444,11 @@
 
     window.filtrarItens = () => {
       const busca    = document.getElementById('busca-item').value.toLowerCase();
-      const grupo    = document.getElementById('filtro-grupo-modal').value;
+      const grupoId  = document.getElementById('filtro-grupo-modal').value;
       const jaAssoc  = new Set(itensDaArea.map(i => i.item_id));
       const filtered = bibliotecaItens
         .filter(i => !jaAssoc.has(i.id))
-        .filter(i => !grupo || i.grupo === grupo)
+        .filter(i => !grupoId || i.grupo_id === grupoId)
         .filter(i => !busca || i.descricao.toLowerCase().includes(busca));
 
       const div = document.getElementById('itens-busca-lista');
@@ -458,7 +460,7 @@
         <div class="item-opcao ${itemSelecionado === i.id ? 'selecionado' : ''}"
              onclick="selecionarItemModal('${i.id}', this)">
           <span>${i.descricao}</span>
-          ${i.grupo ? `<span style="font-size:11px;color:#6c757d;margin-left:6px;float:right">${i.grupo}</span>` : ''}
+          ${i.grupo_nome ? `<span style="font-size:11px;color:#6c757d;margin-left:6px;float:right">${i.grupo_nome}</span>` : ''}
         </div>`).join('');
     };
 

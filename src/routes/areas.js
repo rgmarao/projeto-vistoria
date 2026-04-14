@@ -180,7 +180,7 @@ router.get('/areas/:id/itens', requireAuth, async (req, res) => {
 
   const { data, error } = await supabase
     .from('area_itens')
-    .select(`id, ordem, item_id, itens_verificacao (id, descricao, ativo, grupo)`)
+    .select(`id, ordem, item_id, itens_verificacao (id, descricao, ativo, grupo_id, grupos_verificacao(id, nome))`)
     .eq('area_id', id)
     .order('ordem');
 
@@ -191,7 +191,8 @@ router.get('/areas/:id/itens', requireAuth, async (req, res) => {
     item_id:      row.item_id,
     descricao:    row.itens_verificacao.descricao,
     ativo:        row.itens_verificacao.ativo,
-    grupo:        row.itens_verificacao.grupo || null,
+    grupo_id:     row.itens_verificacao.grupo_id || null,
+    grupo_nome:   row.itens_verificacao.grupos_verificacao?.nome || null,
     ordem:        row.ordem
   }));
 

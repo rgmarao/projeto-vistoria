@@ -120,12 +120,24 @@ export const unidades = {
 
 // ── Itens de verificação ───────────────────────────────────────
 export const itens = {
-  listar:    (ativo)    => apiFetch(`/api/itens${ativo !== undefined ? `?ativo=${ativo}` : ''}`),
-  grupos:    ()         => apiFetch('/api/itens/grupos'),
+  listar:    (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return apiFetch(`/api/itens${qs ? '?' + qs : ''}`);
+  },
   criar:     (body)     => apiFetch('/api/itens',       { method: 'POST',   body: JSON.stringify(body) }),
   editar:    (id, body) => apiFetch(`/api/itens/${id}`, { method: 'PUT',    body: JSON.stringify(body) }),
   ativar:    (id)       => apiFetch(`/api/itens/${id}/ativar`,    { method: 'PATCH' }),
   desativar: (id)       => apiFetch(`/api/itens/${id}/desativar`, { method: 'PATCH' })
+};
+
+// ── Grupos de verificação ─────────────────────────────────────
+export const grupos = {
+  listar:    (ativo)    => apiFetch(`/api/grupos${ativo !== undefined ? `?ativo=${ativo}` : ''}`),
+  criar:     (body)     => apiFetch('/api/grupos',       { method: 'POST',   body: JSON.stringify(body) }),
+  editar:    (id, body) => apiFetch(`/api/grupos/${id}`, { method: 'PUT',    body: JSON.stringify(body) }),
+  ativar:    (id)       => apiFetch(`/api/grupos/${id}/ativar`,    { method: 'PATCH' }),
+  desativar: (id)       => apiFetch(`/api/grupos/${id}/desativar`, { method: 'PATCH' }),
+  deletar:   (id)       => apiFetch(`/api/grupos/${id}`, { method: 'DELETE' })
 };
 
 // ── Estrutura (áreas + itens por unidade) ─────────────────────

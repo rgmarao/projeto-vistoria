@@ -5,98 +5,85 @@ import { requireAuth } from '../middlewares/auth.js';
 const router = express.Router();
 
 // ─────────────────────────────────────────
-// GET /api/itens
-// Lista todos os itens de verificação (biblioteca global)
-// ?ativo=true|false  ?grupo_id=uuid
+// GET /api/grupos
+// Lista todos os grupos de verificação
+// ?ativo=true|false
 // ─────────────────────────────────────────
 router.get('/', requireAuth, async (req, res) => {
   try {
-    const { ativo, grupo_id } = req.query;
+    const { ativo } = req.query;
     let query = supabase
-      .from('itens_verificacao')
-      .select('id, descricao, ativo, grupo_id, grupos_verificacao(id, nome), criado_em')
-      .order('descricao');
+      .from('grupos_verificacao')
+      .select('id, nome, ativo, criado_em')
+      .order('nome');
     if (ativo !== undefined) query = query.eq('ativo', ativo === 'true');
-    if (grupo_id)            query = query.eq('grupo_id', grupo_id);
     const { data, error } = await query;
     if (error) throw error;
-
-    // Flatten: adiciona grupo_nome para facilitar o frontend
-    const itens = (data || []).map(i => ({
-      ...i,
-      grupo_nome: i.grupos_verificacao?.nome || null,
-      grupos_verificacao: undefined
-    }));
-
-    res.json({ ok: true, data: itens });
+    res.json({ ok: true, data });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
 });
 
 // ─────────────────────────────────────────
-// POST /api/itens
-// Cria um item de verificação
-// body: { descricao, grupo_id? }
+// POST /api/grupos
+// Cria um grupo de verificação
+// body: { nome }
 // ─────────────────────────────────────────
 router.post('/', requireAuth, async (req, res) => {
   try {
-    const { descricao, grupo_id } = req.body;
-    if (!descricao?.trim()) {
-      return res.status(400).json({ ok: false, error: 'Descrição é obrigatória' });
+    const { nome } = req.body;
+    if (!nome?.trim()) {
+      return res.status(400).json({ ok: false, error: 'Nome é obrigatório' });
     }
-    const payload = { descricao: descricao.trim(), ativo: true };
-    if (grupo_id) payload.grupo_id = grupo_id;
     const { data, error } = await supabase
-      .from('itens_verificacao')
-      .insert(payload)
-      .select('id, descricao, ativo, grupo_id, grupos_verificacao(id, nome), criado_em')
+      .from('grupos_verificacao')
+      .insert({ nome: nome.trim(), ativo: true })
+      .select()
       .single();
     if (error) throw error;
-    res.status(201).json({ ok: true, data: { ...data, grupo_nome: data.grupos_verificacao?.nome || null } });
+    res.status(201).json({ ok: true, data });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
 });
 
 // ─────────────────────────────────────────
-// PUT /api/itens/:id
-// Edita descrição e/ou grupo de um item
-// body: { descricao, grupo_id? }
+// PUT /api/grupos/:id
+// Edita um grupo
+// body: { nome }
 // ─────────────────────────────────────────
 router.put('/:id', requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const { descricao, grupo_id } = req.body;
-    if (!descricao?.trim()) {
-      return res.status(400).json({ ok: false, error: 'Descrição é obrigatória' });
+    const { nome } = req.body;
+    if (!nome?.trim()) {
+      return res.status(400).json({ ok: false, error: 'Nome é obrigatório' });
     }
-    const payload = { descricao: descricao.trim() };
-    payload.grupo_id = grupo_id || null;
     const { data, error } = await supabase
-      .from('itens_verificacao')
-      .update(payload)
+      .from('grupos_verificacao')
+      .update({ nome: nome.trim() })
       .eq('id', id)
-      .select('id, descricao, ativo, grupo_id, grupos_verificacao(id, nome), criado_em')
+      .select()
       .single();
     if (error) throw error;
-    if (!data) return res.status(404).json({ ok: false, error: 'Item não encontrado' });
-    res.json({ ok: true, data: { ...data, grupo_nome: data.grupos_verificacao?.nome || null } });
+    if (!data) return res.status(404).json({ ok: false, error: 'Grupo não encontrado' });
+    res.json({ ok: true, data });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
 });
 
 // ─────────────────────────────────────────
-// PATCH /api/itens/:id/ativar
-// PATCH /api/itens/:id/desativar
+// PATCH /api/grupos/:id/ativar
+// PATCH /api/grupos/:id/desativar
 // ─────────────────────────────────────────
 router.patch('/:id/ativar', requireAuth, async (req, res) => {
   try {
     const { data, error } = await supabase
-      .from('itens_verificacao').update({ ativo: true }).eq('id', req.params.id).select().single();
+      .from('grupos_verificacao').update({ ativo: true }).eq('id', req.params.id).select().single();
     if (error) throw error;
-    if (!data) return res.status(404).json({ ok: false, error: 'Item não encontrado' });
+    if (!data) return res.status(404).json({ ok: false, error: 'Grupo não encontrado' });
     res.json({ ok: true, data });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
@@ -106,10 +93,35 @@ router.patch('/:id/ativar', requireAuth, async (req, res) => {
 router.patch('/:id/desativar', requireAuth, async (req, res) => {
   try {
     const { data, error } = await supabase
-      .from('itens_verificacao').update({ ativo: false }).eq('id', req.params.id).select().single();
+      .from('grupos_verificacao').update({ ativo: false }).eq('id', req.params.id).select().single();
     if (error) throw error;
-    if (!data) return res.status(404).json({ ok: false, error: 'Item não encontrado' });
+    if (!data) return res.status(404).json({ ok: false, error: 'Grupo não encontrado' });
     res.json({ ok: true, data });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ─────────────────────────────────────────
+// DELETE /api/grupos/:id
+// Remove grupo (somente se não tiver itens associados)
+// ─────────────────────────────────────────
+router.delete('/:id', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { count } = await supabase
+      .from('itens_verificacao').select('id', { count: 'exact', head: true }).eq('grupo_id', id);
+
+    if (count > 0) {
+      return res.status(400).json({
+        ok: false,
+        error: `Este grupo possui ${count} item(ns) associado(s). Remova a associação primeiro.`
+      });
+    }
+
+    const { error } = await supabase.from('grupos_verificacao').delete().eq('id', id);
+    if (error) throw error;
+    res.json({ ok: true, message: 'Grupo removido com sucesso' });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
