@@ -203,7 +203,7 @@
           </td>
           <td class="text-nowrap">
             <button class="btn btn-sm btn-ghost-secondary"
-              onclick="editar('${g.id}', ${JSON.stringify(g.nome)})">
+              onclick="editar('${g.id}', ${JSON.stringify(g.nome).replace(/"/g, '&quot;')})">
               Editar
             </button>
             <button class="btn btn-sm ${g.ativo ? 'btn-ghost-danger' : 'btn-ghost-success'}"
@@ -211,7 +211,7 @@
               ${g.ativo ? 'Desativar' : 'Ativar'}
             </button>
             <button class="btn btn-sm btn-ghost-danger"
-              onclick="deletar('${g.id}', ${JSON.stringify(g.nome)})">
+              onclick="deletar('${g.id}', ${JSON.stringify(g.nome).replace(/"/g, '&quot;')})">
               Excluir
             </button>
           </td>

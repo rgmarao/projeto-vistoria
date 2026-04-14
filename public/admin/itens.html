@@ -240,7 +240,7 @@
           </td>
           <td class="text-nowrap">
             <button class="btn btn-sm btn-ghost-secondary"
-              onclick="editar('${i.id}', ${JSON.stringify(i.descricao)}, '${i.grupo_id || ''}')">
+              onclick="editar('${i.id}', ${JSON.stringify(i.descricao).replace(/"/g, '&quot;')}, '${i.grupo_id || ''}')">
               Editar
             </button>
             <button class="btn btn-sm ${i.ativo ? 'btn-ghost-danger' : 'btn-ghost-success'}"
