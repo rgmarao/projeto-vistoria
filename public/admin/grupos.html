@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Admin — Itens de Verificação · VistorIA</title>
+  <title>Admin — Grupos de Verificação · VistorIA</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/css/tabler.min.css" />
 </head>
 <body class="antialiased">
@@ -45,16 +45,15 @@
       <div class="container-xl">
         <div class="row g-2 align-items-center">
           <div class="col">
-            <div class="page-pretitle">Administração</div>
+            <div class="page-pretitle">
+              <a href="/admin/itens.html" class="text-muted">← Itens de Verificação</a>
+            </div>
             <h2 class="page-title">
-              Itens de Verificação
+              Grupos de Verificação
               <span class="text-muted fw-normal fs-4 ms-2" id="count-badge"></span>
             </h2>
           </div>
-          <div class="col-auto ms-auto d-print-none d-flex gap-2">
-            <a href="/admin/grupos.html" class="btn btn-outline-secondary">
-              Gerenciar Grupos
-            </a>
+          <div class="col-auto ms-auto d-print-none">
             <button class="btn btn-primary" onclick="abrirModalCriar()">
               <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24"
                 viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"
@@ -62,7 +61,7 @@
                 <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
                 <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
               </svg>
-              Novo Item
+              Novo Grupo
             </button>
           </div>
         </div>
@@ -71,7 +70,6 @@
 
     <div class="page-body">
       <div class="container-xl">
-
         <!-- Filtros -->
         <div class="card mb-3">
           <div class="card-body">
@@ -86,13 +84,8 @@
                     </svg>
                   </span>
                   <input type="text" id="filtro-busca" class="form-control"
-                    placeholder="Buscar por descrição..." oninput="filtrar()" />
+                    placeholder="Buscar por nome..." oninput="filtrar()" />
                 </div>
-              </div>
-              <div class="col-auto">
-                <select id="filtro-grupo" class="form-select" onchange="filtrar()">
-                  <option value="">Todos os grupos</option>
-                </select>
               </div>
               <div class="col-auto">
                 <select id="filtro-ativo" class="form-select" onchange="filtrar()">
@@ -111,15 +104,14 @@
             <table class="table table-vcenter table-hover card-table">
               <thead>
                 <tr>
-                  <th>Descrição</th>
-                  <th>Grupo</th>
+                  <th>Nome</th>
                   <th class="w-1">Status</th>
                   <th class="w-1">Ações</th>
                 </tr>
               </thead>
-              <tbody id="tabela-itens">
+              <tbody id="tabela-grupos">
                 <tr>
-                  <td colspan="4" class="text-center text-muted py-4">
+                  <td colspan="3" class="text-center text-muted py-4">
                     <div class="spinner-border spinner-border-sm me-2" role="status"></div>
                     Carregando...
                   </td>
@@ -128,7 +120,6 @@
             </table>
           </div>
         </div>
-
       </div>
     </div>
   </div>
@@ -138,21 +129,15 @@
     <div class="modal-dialog modal-sm modal-dialog-centered" role="document">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" id="modal-titulo">Novo Item</h5>
+          <h5 class="modal-title" id="modal-titulo">Novo Grupo</h5>
           <button type="button" class="btn-close" onclick="fecharModal()"></button>
         </div>
         <div class="modal-body">
           <div class="alert alert-danger d-none" id="modal-erro"></div>
-          <div class="mb-3">
-            <label class="form-label required">Descrição</label>
-            <textarea id="campo-descricao" class="form-control" rows="3"
-              placeholder="Descreva o item de verificação..."></textarea>
-          </div>
           <div class="mb-2">
-            <label class="form-label">Grupo</label>
-            <select id="campo-grupo" class="form-select">
-              <option value="">Sem grupo</option>
-            </select>
+            <label class="form-label required">Nome do Grupo</label>
+            <input type="text" id="campo-nome" class="form-control"
+              placeholder="Ex.: Segurança do Trabalho, Infraestrutura..." />
           </div>
         </div>
         <div class="modal-footer">
@@ -168,14 +153,13 @@
   <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/js/tabler.min.js"></script>
 
   <script type="module">
-    import { requireLogin, requireRole, getUser, auth, itens, grupos } from '/js/api.js';
+    import { requireLogin, requireRole, getUser, auth, grupos } from '/js/api.js';
 
     requireLogin();
     requireRole('admin');
     document.getElementById('navbar-user').textContent = getUser()?.nome || '';
 
     let editandoId = null;
-    let todosItens = [];
     let todosGrupos = [];
 
     function getModal() {
@@ -184,68 +168,51 @@
 
     async function carregar() {
       try {
-        const [resItens, resGrupos] = await Promise.all([
-          itens.listar(),
-          grupos.listar(true)  // apenas ativos
-        ]);
-        todosItens  = resItens.data  || [];
-        todosGrupos = resGrupos.data || [];
-        atualizarSelectsGrupo();
+        const res = await grupos.listar();
+        todosGrupos = res.data || [];
         filtrar();
       } catch (err) {
-        document.getElementById('tabela-itens').innerHTML =
-          `<tr><td colspan="4" class="text-danger text-center">${err.message}</td></tr>`;
+        document.getElementById('tabela-grupos').innerHTML =
+          `<tr><td colspan="3" class="text-danger text-center">${err.message}</td></tr>`;
       }
-    }
-
-    function atualizarSelectsGrupo() {
-      // Filtro na página
-      const sel = document.getElementById('filtro-grupo');
-      const atual = sel.value;
-      sel.innerHTML = '<option value="">Todos os grupos</option>' +
-        todosGrupos.map(g => `<option value="${g.id}" ${g.id === atual ? 'selected' : ''}>${g.nome}</option>`).join('');
-
-      // Select no modal
-      const selModal = document.getElementById('campo-grupo');
-      selModal.innerHTML = '<option value="">Sem grupo</option>' +
-        todosGrupos.map(g => `<option value="${g.id}">${g.nome}</option>`).join('');
     }
 
     window.filtrar = () => {
-      const busca    = document.getElementById('filtro-busca').value.toLowerCase();
-      const ativo    = document.getElementById('filtro-ativo').value;
-      const grupoId  = document.getElementById('filtro-grupo').value;
+      const busca = document.getElementById('filtro-busca').value.toLowerCase();
+      const ativo = document.getElementById('filtro-ativo').value;
 
-      let lista = todosItens;
-      if (ativo !== '') lista = lista.filter(i => String(i.ativo) === ativo);
-      if (grupoId)      lista = lista.filter(i => i.grupo_id === grupoId);
-      if (busca)         lista = lista.filter(i => i.descricao.toLowerCase().includes(busca));
+      let lista = todosGrupos;
+      if (ativo !== '') lista = lista.filter(g => String(g.ativo) === ativo);
+      if (busca)        lista = lista.filter(g => g.nome.toLowerCase().includes(busca));
 
       document.getElementById('count-badge').textContent = `(${lista.length})`;
 
-      const tbody = document.getElementById('tabela-itens');
+      const tbody = document.getElementById('tabela-grupos');
       if (!lista.length) {
         tbody.innerHTML =
-          '<tr><td colspan="4" class="text-center text-muted py-4">Nenhum item encontrado.</td></tr>';
+          '<tr><td colspan="3" class="text-center text-muted py-4">Nenhum grupo encontrado.</td></tr>';
         return;
       }
-      tbody.innerHTML = lista.map(i => `
+      tbody.innerHTML = lista.map(g => `
         <tr>
-          <td>${i.descricao}</td>
-          <td>${i.grupo_nome ? `<span class="badge bg-azure-lt text-azure">${i.grupo_nome}</span>` : '<span class="text-muted">\u2014</span>'}</td>
+          <td>${g.nome}</td>
           <td>
-            <span class="badge ${i.ativo ? 'bg-success-lt text-success' : 'bg-danger-lt text-danger'}">
-              ${i.ativo ? 'Ativo' : 'Inativo'}
+            <span class="badge ${g.ativo ? 'bg-success-lt text-success' : 'bg-danger-lt text-danger'}">
+              ${g.ativo ? 'Ativo' : 'Inativo'}
             </span>
           </td>
           <td class="text-nowrap">
             <button class="btn btn-sm btn-ghost-secondary"
-              onclick="editar('${i.id}', ${JSON.stringify(i.descricao)}, '${i.grupo_id || ''}')">
+              onclick="editar('${g.id}', ${JSON.stringify(g.nome)})">
               Editar
             </button>
-            <button class="btn btn-sm ${i.ativo ? 'btn-ghost-danger' : 'btn-ghost-success'}"
-              onclick="toggleAtivo('${i.id}', ${i.ativo})">
-              ${i.ativo ? 'Desativar' : 'Ativar'}
+            <button class="btn btn-sm ${g.ativo ? 'btn-ghost-danger' : 'btn-ghost-success'}"
+              onclick="toggleAtivo('${g.id}', ${g.ativo})">
+              ${g.ativo ? 'Desativar' : 'Ativar'}
+            </button>
+            <button class="btn btn-sm btn-ghost-danger"
+              onclick="deletar('${g.id}', ${JSON.stringify(g.nome)})">
+              Excluir
             </button>
           </td>
         </tr>`).join('');
@@ -253,19 +220,17 @@
 
     window.abrirModalCriar = () => {
       editandoId = null;
-      document.getElementById('modal-titulo').textContent = 'Novo Item';
-      document.getElementById('campo-descricao').value    = '';
-      document.getElementById('campo-grupo').value        = '';
+      document.getElementById('modal-titulo').textContent = 'Novo Grupo';
+      document.getElementById('campo-nome').value = '';
       document.getElementById('modal-erro').classList.add('d-none');
       getModal().show();
-      setTimeout(() => document.getElementById('campo-descricao').focus(), 300);
+      setTimeout(() => document.getElementById('campo-nome').focus(), 300);
     };
 
-    window.editar = (id, descricao, grupoId) => {
+    window.editar = (id, nome) => {
       editandoId = id;
-      document.getElementById('modal-titulo').textContent = 'Editar Item';
-      document.getElementById('campo-descricao').value    = descricao;
-      document.getElementById('campo-grupo').value        = grupoId || '';
+      document.getElementById('modal-titulo').textContent = 'Editar Grupo';
+      document.getElementById('campo-nome').value = nome;
       document.getElementById('modal-erro').classList.add('d-none');
       getModal().show();
     };
@@ -273,21 +238,20 @@
     window.fecharModal = () => getModal().hide();
 
     window.salvar = async () => {
-      const descricao = document.getElementById('campo-descricao').value.trim();
-      const grupo_id  = document.getElementById('campo-grupo').value || null;
-      const erroEl    = document.getElementById('modal-erro');
-      const btn       = document.getElementById('btn-salvar');
+      const nome   = document.getElementById('campo-nome').value.trim();
+      const erroEl = document.getElementById('modal-erro');
+      const btn    = document.getElementById('btn-salvar');
 
-      if (!descricao) {
-        erroEl.textContent = 'Descrição é obrigatória.';
+      if (!nome) {
+        erroEl.textContent = 'Nome é obrigatório.';
         erroEl.classList.remove('d-none');
         return;
       }
       btn.disabled = true;
       erroEl.classList.add('d-none');
       try {
-        if (editandoId) await itens.editar(editandoId, { descricao, grupo_id });
-        else            await itens.criar({ descricao, grupo_id });
+        if (editandoId) await grupos.editar(editandoId, { nome });
+        else            await grupos.criar({ nome });
         fecharModal();
         carregar();
       } catch (err) {
@@ -300,8 +264,16 @@
 
     window.toggleAtivo = async (id, ativo) => {
       try {
-        if (ativo) await itens.desativar(id);
-        else       await itens.ativar(id);
+        if (ativo) await grupos.desativar(id);
+        else       await grupos.ativar(id);
+        carregar();
+      } catch (err) { alert(err.message); }
+    };
+
+    window.deletar = async (id, nome) => {
+      if (!confirm(`Excluir o grupo "${nome}"? Só é possível se não houver itens associados.`)) return;
+      try {
+        await grupos.deletar(id);
         carregar();
       } catch (err) { alert(err.message); }
     };
