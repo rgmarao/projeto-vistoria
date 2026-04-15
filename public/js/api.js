@@ -87,7 +87,8 @@ export const empresas = {
   criar:     (body)      => apiFetch('/api/empresas', { method: 'POST', body: JSON.stringify(body) }),
   editar:    (id, body)  => apiFetch(`/api/empresas/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
   ativar:    (id)        => apiFetch(`/api/empresas/${id}/ativar`,    { method: 'PATCH' }),
-  desativar: (id)        => apiFetch(`/api/empresas/${id}/desativar`, { method: 'PATCH' })
+  desativar: (id)        => apiFetch(`/api/empresas/${id}/desativar`, { method: 'PATCH' }),
+  semaforos: (id)        => apiFetch(`/api/empresas/${id}/semaforos`)
 };
 
 // ── Vistorias ──────────────────────────────────────────────────
@@ -115,7 +116,8 @@ export const unidades = {
   editar:      (id, formData)=> apiFetchForm(`/api/unidades/${id}`, { method: 'PUT', body: formData }),
   ativar:      (id)          => apiFetch(`/api/unidades/${id}/ativar`,    { method: 'PATCH' }),
   desativar:   (id)          => apiFetch(`/api/unidades/${id}/desativar`, { method: 'PATCH' }),
-  removerLogo: (id)          => apiFetch(`/api/unidades/${id}/logo`,      { method: 'DELETE' })
+  removerLogo: (id)          => apiFetch(`/api/unidades/${id}/logo`,      { method: 'DELETE' }),
+  semaforos:   (id)          => apiFetch(`/api/unidades/${id}/semaforos`)
 };
 
 // ── Itens de verificação ───────────────────────────────────────

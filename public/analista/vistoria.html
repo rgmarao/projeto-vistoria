@@ -165,16 +165,8 @@
           </div>
           <div class="mb-3">
             <label class="form-label required">Status</label>
-            <div class="d-flex gap-4 flex-wrap mt-1">
-              <label class="d-flex align-items-center gap-2" style="cursor:pointer">
-                <input type="radio" name="oc-status" value="ok" checked /> ✅ OK
-              </label>
-              <label class="d-flex align-items-center gap-2" style="cursor:pointer">
-                <input type="radio" name="oc-status" value="atencao" /> ⚠️ Atenção
-              </label>
-              <label class="d-flex align-items-center gap-2" style="cursor:pointer">
-                <input type="radio" name="oc-status" value="critico" /> 🚨 Crítico
-              </label>
+            <div id="status-radios" class="d-flex gap-4 flex-wrap mt-1">
+              <!-- Preenchido dinamicamente com base nos semáforos da unidade -->
             </div>
           </div>
           <div class="mb-2 rec-group" id="rec-group">
@@ -206,16 +198,35 @@
     let uploadOcId   = null;
     let uploadSlot   = null;
     let editavel     = false;
+    let semaforos    = null; // configuração efetiva da unidade
 
     const getModal = () => window.bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-oc'));
 
-    // Radio status → mostra/esconde campo rec
-    document.querySelectorAll('input[name="oc-status"]').forEach(r => {
-      r.addEventListener('change', () => {
-        const v = document.querySelector('input[name="oc-status"]:checked').value;
-        document.getElementById('rec-group').classList.toggle('visivel', ['atencao','critico'].includes(v));
+    const SEM_EMOJIS = { ok: '✅', atencao: '⚠️', critico: '🚨' };
+    const SEM_DEFAULTS = {
+      ok:      { label: 'OK',      visivel: true },
+      atencao: { label: 'Atenção', visivel: true },
+      critico: { label: 'Crítico', visivel: true }
+    };
+
+    function renderStatusRadios(checked = 'ok') {
+      const sem    = semaforos || SEM_DEFAULTS;
+      const opcoes = ['ok', 'atencao', 'critico'].filter(k => sem[k]?.visivel !== false);
+      const val    = opcoes.includes(checked) ? checked : (opcoes[0] || 'ok');
+      document.getElementById('status-radios').innerHTML = opcoes.map(k => `
+        <label class="d-flex align-items-center gap-2" style="cursor:pointer">
+          <input type="radio" name="oc-status" value="${k}" ${val === k ? 'checked' : ''} />
+          ${SEM_EMOJIS[k] || ''} ${sem[k]?.label || k}
+        </label>
+      `).join('');
+      document.querySelectorAll('input[name="oc-status"]').forEach(r => {
+        r.addEventListener('change', () => {
+          const v = document.querySelector('input[name="oc-status"]:checked').value;
+          document.getElementById('rec-group').classList.toggle('visivel', ['atencao','critico'].includes(v));
+        });
       });
-    });
+      document.getElementById('rec-group').classList.toggle('visivel', ['atencao','critico'].includes(val));
+    }
 
     // ── Carrega vistoria ───────────────────────────
     async function carregar(preservar = false) {
@@ -226,6 +237,7 @@
         });
         const d = await r.json();
         if (!r.ok) throw new Error(d.error || 'Erro ao carregar');
+        semaforos = d.semaforos || null;
         editavel = d.vistoria.status === 'em_andamento';
         renderHeader(d.vistoria);
         renderChecklist(d.areas, preservar);
@@ -391,9 +403,8 @@
       document.getElementById('modal-titulo').textContent = 'Nova Ocorrência';
       document.getElementById('oc-descricao').value       = '';
       document.getElementById('oc-recomendacao').value    = '';
-      document.querySelector('input[name="oc-status"][value="ok"]').checked = true;
-      document.getElementById('rec-group').classList.remove('visivel');
       document.getElementById('modal-erro').classList.add('d-none');
+      renderStatusRadios('ok');
       getModal().show();
     };
 
@@ -403,10 +414,8 @@
       document.getElementById('modal-titulo').textContent  = 'Editar Ocorrência';
       document.getElementById('oc-descricao').value        = descricao;
       document.getElementById('oc-recomendacao').value     = recomendacao;
-      const radio = document.querySelector(`input[name="oc-status"][value="${status}"]`);
-      if (radio) radio.checked = true;
-      document.getElementById('rec-group').classList.toggle('visivel', ['atencao','critico'].includes(status));
       document.getElementById('modal-erro').classList.add('d-none');
+      renderStatusRadios(status);
       getModal().show();
     };
 

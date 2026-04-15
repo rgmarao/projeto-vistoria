@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Admin — Unidades · VistorIA</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/css/tabler.min.css" />
+  <style>
+    .sem-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .sem-dot  { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  </style>
 </head>
 <body class="antialiased">
 
@@ -123,12 +127,53 @@
             <label class="form-label">Endereço</label>
             <input type="text" id="campo-endereco" class="form-control" placeholder="Endereço completo" />
           </div>
-          <div class="mb-2">
+          <div class="mb-3">
             <label class="form-label">Logo</label>
             <input type="file" id="campo-logo" class="form-control" accept="image/jpeg,image/png,image/webp" onchange="previewLogo()" />
             <div id="logo-preview" class="d-none align-items-center gap-2 mt-2">
               <img id="logo-preview-img" src="" alt="Preview" style="width:60px;height:60px;object-fit:cover;border-radius:6px;border:1px solid #ddd" />
               <button class="btn btn-sm btn-ghost-danger" type="button" onclick="removerLogoPreview()">Remover</button>
+            </div>
+          </div>
+
+          <!-- Semáforos -->
+          <hr class="my-3" />
+          <div class="mb-1">
+            <label class="form-label mb-1">Semáforos de Status</label>
+            <div class="mb-2 d-flex gap-3">
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="sem-modo" id="sem-herdar" value="herdar"
+                       onchange="toggleSemModo()" />
+                <label class="form-check-label small" for="sem-herdar">Herdar da empresa</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="sem-modo" id="sem-custom" value="custom"
+                       onchange="toggleSemModo()" />
+                <label class="form-check-label small" for="sem-custom">Customizar para esta unidade</label>
+              </div>
+            </div>
+            <div id="sem-herdado-info" class="text-muted small mb-2" style="display:none">
+              Usando configuração da empresa.
+            </div>
+            <div id="sem-config" style="display:none">
+              <div class="text-muted small mb-2">
+                Rótulos exibidos na interface e nos relatórios. Desmarcar oculta o status no formulário de ocorrências.
+              </div>
+              <div class="sem-row">
+                <input type="checkbox" id="sem-ok-vis" class="form-check-input mt-0" title="Visível" />
+                <span class="sem-dot" style="background:#388e3c"></span>
+                <input type="text" id="sem-ok-label" class="form-control form-control-sm" placeholder="OK" maxlength="30" />
+              </div>
+              <div class="sem-row">
+                <input type="checkbox" id="sem-atencao-vis" class="form-check-input mt-0" title="Visível" />
+                <span class="sem-dot" style="background:#f57c00"></span>
+                <input type="text" id="sem-atencao-label" class="form-control form-control-sm" placeholder="Atenção" maxlength="30" />
+              </div>
+              <div class="sem-row">
+                <input type="checkbox" id="sem-critico-vis" class="form-check-input mt-0" title="Visível" />
+                <span class="sem-dot" style="background:#c62828"></span>
+                <input type="text" id="sem-critico-label" class="form-control form-control-sm" placeholder="Crítico" maxlength="30" />
+              </div>
             </div>
           </div>
         </div>
@@ -149,10 +194,47 @@
     requireRole('admin');
     document.getElementById('navbar-user').textContent = getUser()?.nome || '';
 
+    const DEFAULTS_SEM = {
+      ok:      { label: 'OK',      visivel: true },
+      atencao: { label: 'Atenção', visivel: true },
+      critico: { label: 'Crítico', visivel: true }
+    };
+
     let editandoId   = null;
     let logoAtualUrl = null;
 
     const getModal = () => window.bootstrap.Modal.getOrCreateInstance(document.getElementById('modal'));
+
+    window.toggleSemModo = () => {
+      const herdar = document.getElementById('sem-herdar').checked;
+      document.getElementById('sem-herdado-info').style.display = herdar ? '' : 'none';
+      document.getElementById('sem-config').style.display       = herdar ? 'none' : '';
+    };
+
+    function carregarSemaforos(cfg) {
+      for (const [key, def] of Object.entries(DEFAULTS_SEM)) {
+        const val = cfg?.[key] || def;
+        document.getElementById(`sem-${key}-label`).value = val.label;
+        document.getElementById(`sem-${key}-vis`).checked = val.visivel !== false;
+      }
+    }
+
+    function getSemaforos() {
+      const herdar = document.getElementById('sem-herdar').checked;
+      if (herdar) return null;
+      return {
+        ok:      { label: document.getElementById('sem-ok-label').value.trim()      || 'OK',      visivel: document.getElementById('sem-ok-vis').checked },
+        atencao: { label: document.getElementById('sem-atencao-label').value.trim() || 'Atenção', visivel: document.getElementById('sem-atencao-vis').checked },
+        critico: { label: document.getElementById('sem-critico-label').value.trim() || 'Crítico', visivel: document.getElementById('sem-critico-vis').checked }
+      };
+    }
+
+    function resetSemForm() {
+      document.getElementById('sem-herdar').checked = true;
+      document.getElementById('sem-custom').checked = false;
+      toggleSemModo();
+      carregarSemaforos(null);
+    }
 
     async function carregarEmpresas() {
       const res  = await empresas.listar();
@@ -190,10 +272,7 @@
             <td><span class="badge ${u.ativo ? 'bg-success-lt text-success' : 'bg-danger-lt text-danger'}">${u.ativo ? 'Ativa' : 'Inativa'}</span></td>
             <td class="text-nowrap">
               <a href="/admin/estrutura.html?id=${u.id}" class="btn btn-sm btn-ghost-secondary">Estrutura</a>
-              <button class="btn btn-sm btn-ghost-secondary"
-                onclick="editar('${u.id}','${esc(u.nome)}','${esc(u.endereco||'')}','${u.empresa_id}','${u.logo_url_assinada||''}')">
-                Editar
-              </button>
+              <button class="btn btn-sm btn-ghost-secondary" onclick="editar('${u.id}')">Editar</button>
               <button class="btn btn-sm ${u.ativo ? 'btn-ghost-danger' : 'btn-ghost-success'}"
                 onclick="toggleAtivo('${u.id}',${u.ativo})">
                 ${u.ativo ? 'Desativar' : 'Ativar'}
@@ -214,26 +293,47 @@
       document.getElementById('campo-empresa').value  = '';
       document.getElementById('logo-preview').classList.add('d-none');
       document.getElementById('modal-erro').classList.add('d-none');
+      resetSemForm();
       getModal().show();
     };
 
-    window.editar = (id, nome, endereco, empresa_id, logoUrl) => {
-      editandoId = id; logoAtualUrl = logoUrl || null;
+    window.editar = async (id) => {
+      editandoId = id; logoAtualUrl = null;
       document.getElementById('modal-titulo').textContent = 'Editar Unidade';
-      document.getElementById('campo-nome').value     = nome;
-      document.getElementById('campo-endereco').value = endereco;
-      document.getElementById('campo-empresa').value  = empresa_id;
+      document.getElementById('campo-nome').value     = '';
+      document.getElementById('campo-endereco').value = '';
       document.getElementById('campo-logo').value     = '';
       document.getElementById('modal-erro').classList.add('d-none');
-      if (logoUrl) {
-        document.getElementById('logo-preview-img').src = logoUrl;
-        document.getElementById('logo-preview').classList.remove('d-none');
-        document.getElementById('logo-preview').classList.add('d-flex');
-      } else {
-        document.getElementById('logo-preview').classList.add('d-none');
-        document.getElementById('logo-preview').classList.remove('d-flex');
-      }
+      document.getElementById('logo-preview').classList.add('d-none');
+      resetSemForm();
       getModal().show();
+
+      try {
+        const res = await unidades.detalhe(id);
+        const u = res.data;
+        document.getElementById('campo-nome').value     = u.nome || '';
+        document.getElementById('campo-endereco').value = u.endereco || '';
+        document.getElementById('campo-empresa').value  = u.empresa_id || '';
+
+        if (u.logo_url_assinada) {
+          logoAtualUrl = u.logo_url_assinada;
+          document.getElementById('logo-preview-img').src = u.logo_url_assinada;
+          document.getElementById('logo-preview').classList.remove('d-none');
+          document.getElementById('logo-preview').classList.add('d-flex');
+        }
+
+        if (u.configuracao_semaforos) {
+          document.getElementById('sem-custom').checked = true;
+          document.getElementById('sem-herdar').checked = false;
+          toggleSemModo();
+          carregarSemaforos(u.configuracao_semaforos);
+        } else {
+          resetSemForm();
+        }
+      } catch (err) {
+        document.getElementById('modal-erro').textContent = 'Erro ao carregar dados: ' + err.message;
+        document.getElementById('modal-erro').classList.remove('d-none');
+      }
     };
 
     window.fecharModal = () => getModal().hide();
@@ -267,9 +367,11 @@
       btn.disabled = true;
       erro.classList.add('d-none');
       try {
+        const semCfg = getSemaforos();
         const fd = new FormData();
         fd.append('nome', nome);
         fd.append('endereco', endereco);
+        fd.append('configuracao_semaforos', semCfg ? JSON.stringify(semCfg) : 'null');
         if (!editandoId) fd.append('empresa_id', empresa_id);
         if (logoFile) fd.append('logo', logoFile);
         if (editandoId) await unidades.editar(editandoId, fd);

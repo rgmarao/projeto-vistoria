@@ -146,6 +146,13 @@
     const nomeParam   = params.get('nome')    || '';
     const empresaParam = params.get('empresa') || '';
 
+    const SEM_DEFAULTS = {
+      ok:      { label: 'OK',      visivel: true },
+      atencao: { label: 'Atenção', visivel: true },
+      critico: { label: 'Crítico', visivel: true }
+    };
+    const SEM_EMOJIS = { ok: '✅', atencao: '⚠️', critico: '🚨' };
+
     let vistoria = null;
     let fotoAlvo = null; // { ai, ii, oi, slot }
 
@@ -208,6 +215,7 @@
           status:       'rascunho',
           created_at:   new Date().toISOString(),
           updated_at:   new Date().toISOString(),
+          semaforos:    cl.semaforos || null,
           areas: cl.areas.map(a => ({
             area_id:   a.area_id,
             area_nome: a.area_nome,
@@ -279,6 +287,8 @@
 
     function renderOcorrencia(ai, ii, oi, oc, totalOcs) {
       const podRemover = totalOcs > 1;
+      const sem = vistoria.semaforos || SEM_DEFAULTS;
+      const opcoes = ['ok', 'atencao', 'critico'].filter(k => sem[k]?.visivel !== false);
       const recVisivel = ['atencao','critico'].includes(oc.situacao);
       return `
         <div class="ocorrencia-block" id="oc-block-${ai}-${ii}-${oi}">
@@ -289,12 +299,11 @@
               : ''}
           </div>
           <div class="status-row">
-            <button class="btn-status ok ${oc.situacao === 'ok' ? 'ativo' : ''}"
-              data-status="ok" onclick="setSituacao(${ai},${ii},${oi},'ok')">✅ OK</button>
-            <button class="btn-status atencao ${oc.situacao === 'atencao' ? 'ativo' : ''}"
-              data-status="atencao" onclick="setSituacao(${ai},${ii},${oi},'atencao')">⚠️&nbsp;Atenção</button>
-            <button class="btn-status critico ${oc.situacao === 'critico' ? 'ativo' : ''}"
-              data-status="critico" onclick="setSituacao(${ai},${ii},${oi},'critico')">🚨 Crítico</button>
+            ${opcoes.map(k => `
+            <button class="btn-status ${k} ${oc.situacao === k ? 'ativo' : ''}"
+              data-status="${k}" onclick="setSituacao(${ai},${ii},${oi},'${k}')">
+              ${SEM_EMOJIS[k] || ''}&nbsp;${sem[k]?.label || k}
+            </button>`).join('')}
           </div>
           <div class="field-group">
             <span class="field-label">Descrição</span>

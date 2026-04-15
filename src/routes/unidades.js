@@ -2,6 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import { requireAuth } from '../middlewares/auth.js';
 import { supabase } from '../config/supabase.js';
+import { resolveSemaforos } from '../utils/semaforos.js';
 
 const router = express.Router();
 
@@ -56,6 +57,26 @@ router.get('/:id', requireAuth, async (req, res) => {
     }
 });
 
+// GET /api/unidades/:id/semaforos — Configuração efetiva de semáforos
+router.get('/:id/semaforos', requireAuth, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { data, error } = await supabase
+            .from('unidades')
+            .select('configuracao_semaforos, empresas(configuracao_semaforos)')
+            .eq('id', id)
+            .single();
+        if (error || !data) return res.status(404).json({ ok: false, error: 'Unidade não encontrada' });
+        const semaforos = resolveSemaforos(
+            data.empresas?.configuracao_semaforos,
+            data.configuracao_semaforos
+        );
+        res.json({ ok: true, data: semaforos });
+    } catch (err) {
+        res.status(500).json({ ok: false, error: err.message });
+    }
+});
+
 // POST /api/unidades
 router.post('/', requireAuth, upload.single('logo'), async (req, res) => {
     try {
@@ -63,9 +84,14 @@ router.post('/', requireAuth, upload.single('logo'), async (req, res) => {
         if (!nome)       return res.status(400).json({ ok: false, error: 'Campo "nome" é obrigatório' });
         if (!empresa_id) return res.status(400).json({ ok: false, error: 'Campo "empresa_id" é obrigatório' });
 
+        let configuracao_semaforos = null;
+        if (req.body.configuracao_semaforos) {
+            try { configuracao_semaforos = JSON.parse(req.body.configuracao_semaforos); } catch { /* ignora JSON inválido */ }
+        }
+
         const { data: novaUnidade, error: erroCriar } = await supabase
             .from('unidades')
-            .insert({ nome, empresa_id, endereco: endereco || null, ativo: true })
+            .insert({ nome, empresa_id, endereco: endereco || null, configuracao_semaforos, ativo: true })
             .select().single();
         if (erroCriar) throw erroCriar;
 
@@ -96,6 +122,13 @@ router.put('/:id', requireAuth, upload.single('logo'), async (req, res) => {
         const campos = {};
         if (nome     !== undefined) campos.nome     = nome;
         if (endereco !== undefined) campos.endereco = endereco;
+        if (req.body.configuracao_semaforos !== undefined) {
+            if (req.body.configuracao_semaforos === 'null' || req.body.configuracao_semaforos === '') {
+                campos.configuracao_semaforos = null;
+            } else {
+                try { campos.configuracao_semaforos = JSON.parse(req.body.configuracao_semaforos); } catch { /* ignora */ }
+            }
+        }
         campos.atualizado_em = new Date().toISOString();
 
         if (req.file) {
