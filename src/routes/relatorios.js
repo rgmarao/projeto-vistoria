@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { supabase } from '../config/supabase.js';
 import { requireAuth } from '../middlewares/auth.js';
+import { resolveSemaforos } from '../utils/semaforos.js';
 
 const router = express.Router();
 
@@ -44,8 +45,16 @@ const BG_CR   = '#ffebee';
 
 const OC_STATUS_COLOR  = { ok: C_OK,  atencao: C_AT,  critico: C_CR  };
 const OC_STRIP_BG      = { ok: BG_OK, atencao: BG_AT, critico: BG_CR };
-const OC_STATUS_SUFFIX = { ok: '', atencao: ' - ATENÇÃO', critico: ' - CRÍTICO' };
 const STATUS_LABEL     = { em_andamento: 'Em andamento', finalizada: 'Finalizada', publicada: 'Publicada' };
+
+// Gera sufixos de status usando labels customizados dos semáforos
+function buildStatusSuffix(semaforos) {
+  return {
+    ok:      '',
+    atencao: ` - ${(semaforos?.atencao?.label || 'Atenção').toUpperCase()}`,
+    critico: ` - ${(semaforos?.critico?.label || 'Crítico').toUpperCase()}`
+  };
+}
 
 // ── Logo VistorIA (fallback) ──────────────────────────────────────────────────
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -209,10 +218,11 @@ async function fetchEstrutura(visId, unidadeId, filtro = null) {
 }
 
 // ── Renderiza uma ocorrência ──────────────────────────────────────────────────
-function renderOc(doc, oc) {
+function renderOc(doc, oc, semaforos) {
+  const statusSuffix = buildStatusSuffix(semaforos);
   const color    = OC_STATUS_COLOR[oc.status] || MUTED;
   const stripBg  = OC_STRIP_BG[oc.status]    || '#f5f5f5';
-  const suffix   = OC_STATUS_SUFFIX[oc.status] ?? '';
+  const suffix   = statusSuffix[oc.status] ?? '';
   const ocLabel  = `OCORRÊNCIA ${oc.numero_ocorrencia}${suffix}`;
   const hasRec   = oc.recomendacao && ['atencao', 'critico'].includes(oc.status);
 
@@ -270,7 +280,7 @@ function renderOc(doc, oc) {
 }
 
 // ── Renderiza estrutura completa ──────────────────────────────────────────────
-function renderEstrutura(doc, estrutura) {
+function renderEstrutura(doc, estrutura, semaforos) {
   for (const area of estrutura) {
     // Garante que o título da área não fique órfão do primeiro item + início da ocorrência
     if (doc.y + 110 > BODY_BOT) doc.addPage();
@@ -289,7 +299,7 @@ function renderEstrutura(doc, estrutura) {
          .text(item.descricao.toUpperCase(), CONT_X, doc.y, { width: CONT_W });
       doc.moveDown(0.5);
 
-      for (const oc of item.ocs) renderOc(doc, oc);
+      for (const oc of item.ocs) renderOc(doc, oc, semaforos);
 
       if (doc.y + 20 < BODY_BOT) doc.moveDown(0.4);
     }
@@ -340,7 +350,14 @@ router.get('/vistorias/:id/pdf', requireAuth, async (req, res) => {
       if (s?.signedUrl) { const b = await fetchImageBuffer(s.signedUrl); if (b) logoBuf = b; }
     }
 
-    const estrutura = await fetchEstrutura(id, unidade.id);
+    const [estrutura, unidadeSemConfig] = await Promise.all([
+      fetchEstrutura(id, unidade.id),
+      supabase.from('unidades').select('configuracao_semaforos, empresas(configuracao_semaforos)').eq('id', unidade.id).single()
+    ]);
+    const semaforos = resolveSemaforos(
+      unidadeSemConfig.data?.empresas?.configuracao_semaforos,
+      unidadeSemConfig.data?.configuracao_semaforos
+    );
     const totalOcs  = estrutura.reduce((s, a) => s + a.itens.reduce((si, i) => si + i.ocs.length, 0), 0);
 
     const doc = new PDFDocument({
@@ -383,7 +400,7 @@ router.get('/vistorias/:id/pdf', requireAuth, async (req, res) => {
     if (estrutura.length === 0) {
       doc.font('Helvetica').fontSize(11).fillColor(MUTED).text('Nenhuma ocorrência registrada.');
     } else {
-      renderEstrutura(doc, estrutura);
+      renderEstrutura(doc, estrutura, semaforos);
     }
 
     // ── Cabeçalho + rodapé ───────────────────────────────────────────────────
@@ -427,7 +444,14 @@ router.get('/vistorias/:id/pdf/pendencias', requireAuth, async (req, res) => {
       if (s?.signedUrl) { const b = await fetchImageBuffer(s.signedUrl); if (b) logoBuf = b; }
     }
 
-    const estrutura = await fetchEstrutura(id, unidade.id, ['atencao', 'critico']);
+    const [estrutura, unidadeSemConfigPend] = await Promise.all([
+      fetchEstrutura(id, unidade.id, ['atencao', 'critico']),
+      supabase.from('unidades').select('configuracao_semaforos, empresas(configuracao_semaforos)').eq('id', unidade.id).single()
+    ]);
+    const semaforos = resolveSemaforos(
+      unidadeSemConfigPend.data?.empresas?.configuracao_semaforos,
+      unidadeSemConfigPend.data?.configuracao_semaforos
+    );
     const totalPend  = estrutura.reduce((s, a) => s + a.itens.reduce((si, i) => si + i.ocs.length, 0), 0);
 
     const doc = new PDFDocument({
@@ -469,7 +493,7 @@ router.get('/vistorias/:id/pdf/pendencias', requireAuth, async (req, res) => {
       doc.font('Helvetica').fontSize(11).fillColor(MUTED)
          .text('Nenhuma pendência encontrada. Vistoria sem itens de atenção ou críticos.');
     } else {
-      renderEstrutura(doc, estrutura);
+      renderEstrutura(doc, estrutura, semaforos);
     }
 
     applyHeaderFooter(doc, { logoBuf, empresa: empresa?.nome, unidade: unidade?.nome || '—', dataVistoria, analista: analista?.nome });

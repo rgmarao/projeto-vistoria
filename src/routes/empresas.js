@@ -1,6 +1,7 @@
 import express from 'express';
 import { supabase } from '../config/supabase.js';
 import { requireAuth } from '../middlewares/auth.js';
+import { resolveSemaforos } from '../utils/semaforos.js';
 
 const router = express.Router();
 
@@ -52,11 +53,32 @@ router.get('/:id', requireAuth, async (req, res) => {
 });
 
 // ─────────────────────────────────────────
+// GET /api/empresas/:id/semaforos — Config efetiva
+// ─────────────────────────────────────────
+router.get('/:id/semaforos', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { data, error } = await supabase
+      .from('empresas')
+      .select('configuracao_semaforos')
+      .eq('id', id)
+      .single();
+
+    if (error || !data) return res.status(404).json({ ok: false, error: 'Empresa não encontrada' });
+
+    const semaforos = resolveSemaforos(data.configuracao_semaforos, null);
+    res.json({ ok: true, data: semaforos });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ─────────────────────────────────────────
 // POST /api/empresas — Criar
 // ─────────────────────────────────────────
 router.post('/', requireAuth, async (req, res) => {
   try {
-    const { nome, cnpj, logo_url } = req.body;
+    const { nome, cnpj, logo_url, configuracao_semaforos } = req.body;
 
     if (!nome) {
       return res.status(400).json({ ok: false, error: 'Campo "nome" é obrigatório' });
@@ -64,7 +86,7 @@ router.post('/', requireAuth, async (req, res) => {
 
     const { data, error } = await supabase
       .from('empresas')
-      .insert({ nome, cnpj, logo_url, ativo: true })
+      .insert({ nome, cnpj, logo_url, configuracao_semaforos: configuracao_semaforos || null, ativo: true })
       .select()
       .single();
 
@@ -82,12 +104,13 @@ router.post('/', requireAuth, async (req, res) => {
 router.put('/:id', requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const { nome, cnpj, logo_url } = req.body;
+    const { nome, cnpj, logo_url, configuracao_semaforos } = req.body;
 
     const campos = {};
-    if (nome      !== undefined) campos.nome     = nome;
-    if (cnpj      !== undefined) campos.cnpj     = cnpj;
-    if (logo_url  !== undefined) campos.logo_url = logo_url;
+    if (nome                    !== undefined) campos.nome                    = nome;
+    if (cnpj                    !== undefined) campos.cnpj                    = cnpj;
+    if (logo_url                !== undefined) campos.logo_url                = logo_url;
+    if (configuracao_semaforos  !== undefined) campos.configuracao_semaforos  = configuracao_semaforos;
     campos.atualizado_em = new Date().toISOString();
 
     const { data, error } = await supabase

@@ -1,6 +1,7 @@
 import express from 'express';
 import { supabase } from '../config/supabase.js';
 import { requireAuth } from '../middlewares/auth.js';
+import { resolveSemaforos } from '../utils/semaforos.js';
 
 const router = express.Router();
 
@@ -141,10 +142,10 @@ router.get('/:id/checklist', requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
 
-    // 1. Busca vistoria com unidade
+    // 1. Busca vistoria com unidade (inclui configuração de semáforos)
     const { data: vis, error: errVis } = await supabase
       .from('vistorias')
-      .select('*, unidades(id, nome, endereco, empresas(id, nome))')
+      .select('*, unidades(id, nome, endereco, configuracao_semaforos, empresas(id, nome, configuracao_semaforos))')
       .eq('id', id)
       .single();
 
@@ -226,17 +227,23 @@ router.get('/:id/checklist', requireAuth, async (req, res) => {
       }))
     }));
 
+    const semaforos = resolveSemaforos(
+      vis.unidades?.empresas?.configuracao_semaforos,
+      vis.unidades?.configuracao_semaforos
+    );
+
     return res.json({
       ok: true,
       vistoria: {
-        id:              vis.id,
-        status:          vis.status,
-        data_criacao:    vis.data_criacao,
+        id:               vis.id,
+        status:           vis.status,
+        data_criacao:     vis.data_criacao,
         data_finalizacao: vis.data_finalizacao,
-        unidade_id:      vis.unidade_id,
-        unidade_nome:    vis.unidades?.nome,
-        empresa_nome:    vis.unidades?.empresas?.nome,
+        unidade_id:       vis.unidade_id,
+        unidade_nome:     vis.unidades?.nome,
+        empresa_nome:     vis.unidades?.empresas?.nome,
       },
+      semaforos,
       areas: estrutura
     });
 

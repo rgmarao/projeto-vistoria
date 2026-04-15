@@ -1,6 +1,7 @@
 import express from 'express';
 import { requireAuth } from '../middlewares/auth.js';
 import { supabase } from '../config/supabase.js';
+import { resolveSemaforos } from '../utils/semaforos.js';
 
 const router = express.Router();
 
@@ -321,26 +322,34 @@ router.get('/unidades/:id/estrutura/versoes/ultima', requireAuth, async (req, re
 // ─────────────────────────────────────────
 // GET /api/unidades/:id/checklist
 // Estrutura completa (áreas + itens agrupados) — usada pelo app
+// Inclui `semaforos` (configuração efetiva herdada empresa → unidade)
 // ─────────────────────────────────────────
 router.get('/unidades/:id/checklist', requireAuth, async (req, res) => {
   const { id } = req.params;
 
-  const { data: areas, error } = await supabase
-    .from('areas')
-    .select(`
-      id, nome, ordem,
-      area_itens (
-        id, ordem, item_id,
-        itens_verificacao (id, descricao, ativo)
-      )
-    `)
-    .eq('unidade_id', id)
-    .eq('ativo', true)
-    .order('ordem');
+  const [areasResult, unidadeResult] = await Promise.all([
+    supabase
+      .from('areas')
+      .select(`
+        id, nome, ordem,
+        area_itens (
+          id, ordem, item_id,
+          itens_verificacao (id, descricao, ativo)
+        )
+      `)
+      .eq('unidade_id', id)
+      .eq('ativo', true)
+      .order('ordem'),
+    supabase
+      .from('unidades')
+      .select('configuracao_semaforos, empresas(configuracao_semaforos)')
+      .eq('id', id)
+      .single()
+  ]);
 
-  if (error) return res.status(500).json({ ok: false, error: error.message });
+  if (areasResult.error) return res.status(500).json({ ok: false, error: areasResult.error.message });
 
-  const checklist = areas.map(area => ({
+  const checklist = areasResult.data.map(area => ({
     area_id:   area.id,
     area_nome: area.nome,
     ordem:     area.ordem,
@@ -355,7 +364,12 @@ router.get('/unidades/:id/checklist', requireAuth, async (req, res) => {
       }))
   }));
 
-  res.json({ ok: true, data: checklist });
+  const semaforos = resolveSemaforos(
+    unidadeResult.data?.empresas?.configuracao_semaforos,
+    unidadeResult.data?.configuracao_semaforos
+  );
+
+  res.json({ ok: true, data: checklist, semaforos });
 });
 
 export default router;
