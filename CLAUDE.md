@@ -257,8 +257,19 @@ git push origin main
 |-------|------|-----------|
 | id | uuid PK | |
 | descricao | text | |
+| grupo_id | uuid FK → grupos_verificacao | NULLABLE, ON DELETE SET NULL |
 | ativo | boolean | default true |
 | criado_em | timestamptz | |
+
+### `grupos_verificacao`
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| id | uuid PK | |
+| nome | text | NOT NULL |
+| ativo | boolean | default true |
+| criado_em | timestamptz | NOT NULL |
+
+> Rótulo/categoria para itens de verificação (ex.: "Segurança do Trabalho", "Infraestrutura"). FK em `itens_verificacao.grupo_id`. No futuro SaaS será escopado por empresa/conta.
 
 ### `area_itens`
 | Campo | Tipo | Descrição |
@@ -342,6 +353,8 @@ git push origin main
 | PATCH | `/api/areas/:id/desativar` | ✅ | Desativa área | ✅ |
 | DELETE | `/api/areas/:id` | ✅ | Remove área (falha se tiver itens) | ✅ |
 | DELETE | `/api/area-itens/:id` | ✅ | Remove vínculo item↔área | ✅ |
+| PATCH | `/api/unidades/:id/areas/reordenar` | ✅ | Batch update `ordem` das áreas (drag-and-drop) | ✅ |
+| PATCH | `/api/areas/:id/itens/reordenar` | ✅ | Batch update `ordem` dos itens da área (drag-and-drop) | ✅ |
 
 ### Estrutura — Versões (`/api/unidades/:id/estrutura`)
 | Método | Rota | Auth | Perfil | Descrição | Status |
@@ -352,11 +365,21 @@ git push origin main
 ### Itens de Verificação (`/api/itens`)
 | Método | Rota | Auth | Descrição | Status |
 |--------|------|------|-----------|--------|
-| GET | `/api/itens` | ✅ | Lista todos (`?ativo=true\|false`) | ✅ |
-| POST | `/api/itens` | ✅ | Cria item global | ✅ |
-| PUT | `/api/itens/:id` | ✅ | Edita descrição | ✅ |
+| GET | `/api/itens` | ✅ | Lista todos (`?ativo=`, `?grupo_id=`); retorna `grupo_nome` flat | ✅ |
+| POST | `/api/itens` | ✅ | Cria item global (body aceita `grupo_id`) | ✅ |
+| PUT | `/api/itens/:id` | ✅ | Edita descrição e/ou `grupo_id` | ✅ |
 | PATCH | `/api/itens/:id/ativar` | ✅ | Ativa | ✅ |
 | PATCH | `/api/itens/:id/desativar` | ✅ | Desativa | ✅ |
+
+### Grupos de Verificação (`/api/grupos`)
+| Método | Rota | Auth | Descrição | Status |
+|--------|------|------|-----------|--------|
+| GET | `/api/grupos` | ✅ | Lista todos (`?ativo=true\|false`) | ✅ |
+| POST | `/api/grupos` | ✅ | Cria grupo (body: `{ nome }`) | ✅ |
+| PUT | `/api/grupos/:id` | ✅ | Edita nome | ✅ |
+| PATCH | `/api/grupos/:id/ativar` | ✅ | Ativa | ✅ |
+| PATCH | `/api/grupos/:id/desativar` | ✅ | Desativa | ✅ |
+| DELETE | `/api/grupos/:id` | ✅ | Remove grupo (falha se tiver itens associados) | ✅ |
 
 ### Empresas (`/api/empresas`)
 | Método | Rota | Auth | Descrição | Status |
@@ -487,13 +510,29 @@ app.use('/api', relatoriosRoutes);
 - **Fase 6:** Relatórios PDF — completo + pendências, cabeçalho/rodapé repetido, layout 2 colunas texto+fotos, agrupamento por área→item
 - **App PWA:** Home (unidades, sync), Vistoria offline (areas→itens→ocorrências→fotos), Sincronização com API
 - **UX:** Dialogs customizados VistorIA, menu avatar com nome/email/limpar cache/sair, reabrir vistoria (web + app)
+- **Melhoria 1:** Drag-and-drop de áreas e itens (SortableJS) — grip handles, batch reorder via PATCH `/reordenar`
+- **Melhoria 2:** Grupos de verificação como entidade FK (tabela `grupos_verificacao`) — CRUD completo em `/admin/grupos.html`, select em itens, filtro por grupo, preparado para SaaS (escopo por empresa no futuro)
 
-### Pendente
+### Pendente (plano de Melhorias)
+Plano completo salvo em `/root/.claude/plans/modular-spinning-turing.md`. Ordem acordada com o usuário:
+
+- **Melhoria 3 — Semáforos Flexíveis:** herança empresa → unidade via JSONB `configuracao_semaforos`; labels/visibilidade customizáveis por cliente; defaults `ok/atencao/critico`. Impacta `vistorias.js`, `relatorios.js`, `analista/vistoria.html`, `app/vistoria.html`, forms de empresa/unidade.
+- **Melhoria 4 — Plano de Ação:** novas tabelas `plano_acao`, `plano_acao_itens`, `plano_acao_tarefas`. Novo perfil `gestor` (pode aprovar tarefas). Responsável escolhido entre perfis vinculados à unidade. Páginas `analista/plano-acao.html` e `analista/minhas-tarefas.html`.
+- **Melhoria 5 — Fundação SaaS / Multi-tenant:** hierarquia Conta > Empresas > Unidades. Nova tabela `contas`, FK `conta_id` em `empresas` e `perfis`. Novo perfil `super_admin`. Middleware `tenant.js` filtra por `conta_id`. Self-service em `/registro.html` + painel super-admin. Migração dados existentes → conta padrão.
+- **Melhoria 6 — i18n (multilíngue):** tabelas `idiomas` e `traducoes`; API `/api/traducoes`; `public/js/i18n.js` com `t(key)` e `translatePage()`. Adoção incremental por data-attributes. Idiomas iniciais: pt_br, en.
+
+### Pendente (outros, fora do plano)
 - **Fase 5 completa:** CRUD Administrativo robusto (gestão de usuários, permissões)
 - **Fase 7:** App Mobile nativo (React Native / Expo) — offline-first com sincronização avançada
 - **Fase 8:** Novos segmentos de checklist (Central de Concreto Usinado, outros)
 - **Melhorias PDF:** assinatura digital, marca d'água, geração assíncrona para relatórios grandes
 - **Notificações:** push notifications para moradores (perfil `usuario`)
+
+### Workflow de deploy (confirmado em sessão)
+- Desenvolvimento em branch feature `claude/...` → merge `--no-ff` para `dev` → push → usuário faz `git pull origin dev` no Replit `vistoria-dev`
+- Após validação DEV, user promove `dev → main` e faz `git pull` no Replit produção
+- Migrações SQL: usuário roda manualmente no SQL Editor do Supabase DEV antes de testar
+- Após alterar schema no Supabase (FKs novas): rodar `NOTIFY pgrst, 'reload schema';` para forçar reload do PostgREST
 
 ---
 
@@ -552,3 +591,25 @@ app.use('/api', relatoriosRoutes);
 - Ao criar uma vistoria, o sistema vincula automaticamente a última versão de estrutura publicada via `estrutura_versao_id`
 - Se não houver versão publicada, `estrutura_versao_id` fica `null` e o checklist usa a estrutura ao vivo
 - Essa tabela foi adicionada após as fases iniciais e não constava no CLAUDE.md original
+
+### HTML escape em `onclick` com `JSON.stringify`
+- **Bug:** `onclick="editar('${id}', ${JSON.stringify(nome)})"` quebra porque `JSON.stringify` injeta `"` literal que fecha o atributo HTML prematuramente — o onclick vira JS inválido e o clique não dispara
+- **Fix:** `${JSON.stringify(nome).replace(/"/g, '&quot;')}` — o HTML parser decodifica `&quot;` → `"` antes do JS rodar
+- Sintoma: criar funciona (botão simples) mas editar/excluir não reagem ao clique
+- Sempre usar esse padrão em qualquer `onclick` com string do banco
+
+### Supabase — cache de schema PostgREST
+- Após criar/alterar FK ou tabela no SQL Editor, o PostgREST mantém schema em cache e pode não reconhecer a nova relação imediatamente
+- Sintoma: queries com join (`.select('tabela_fk(col)')`) retornam erro "Could not find relationship in schema cache"
+- **Fix:** rodar `NOTIFY pgrst, 'reload schema';` no SQL Editor — reload instantâneo sem reiniciar nada
+
+### Supabase — erro "Auth session missing!"
+- **Causa:** JWT do Supabase expira em 1h (default); requisições ao backend chamam `supabase.auth.getUser(token)` que retorna essa mensagem quando o token é inválido/expirado
+- Sintoma: usuário trabalha por um tempo, aí de repente alguma rota retorna esse erro enquanto outras já-carregadas seguem OK
+- **Fix imediato:** logout + login renova o token
+- **Fix definitivo (futuro):** implementar `supabase.auth.refreshSession()` no frontend, ou aumentar JWT expiry no Supabase Dashboard (Authentication → Settings)
+
+### Replit — Preview às vezes mostra "Start application artifact encountered an error"
+- Nem sempre o servidor está caído — o Preview do Replit é flaky e pode perder conexão com o processo Node saudável
+- Sempre confirmar na aba **Console** se aparece `✅ Servidor rodando na porta 5000` antes de assumir crash
+- Alternativa: acessar direto pela URL pública `{...}.replit.dev` mostrada no topo do Console
