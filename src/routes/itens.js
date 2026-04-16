@@ -4,26 +4,44 @@ import { requireAuth } from '../middlewares/auth.js';
 
 const router = express.Router();
 
+// Verifica se o usuário pode modificar o item (tenant dono ou super_admin)
+async function podeMutate(itemId, userPerfil, contaId) {
+  if (userPerfil === 'super_admin') return true;
+  const { data } = await supabase
+    .from('itens_verificacao').select('conta_id').eq('id', itemId).single();
+  if (!data) return false;
+  // Itens globais (conta_id NULL) só super_admin pode alterar
+  if (data.conta_id === null) return false;
+  return data.conta_id === contaId;
+}
+
 // ─────────────────────────────────────────
 // GET /api/itens
-// Lista todos os itens de verificação (biblioteca global)
-// ?ativo=true|false  ?grupo_id=uuid
+// Lista itens globais + itens da conta logada
+// super_admin vê tudo
 // ─────────────────────────────────────────
 router.get('/', requireAuth, async (req, res) => {
   try {
     const { ativo, grupo_id } = req.query;
     let query = supabase
       .from('itens_verificacao')
-      .select('id, descricao, ativo, grupo_id, grupos_verificacao(id, nome), criado_em')
+      .select('id, descricao, ativo, grupo_id, conta_id, grupos_verificacao(id, nome), criado_em')
       .order('descricao');
+
+    if (req.userPerfil !== 'super_admin') {
+      // Globais (NULL) + próprios da conta
+      query = query.or(`conta_id.is.null,conta_id.eq.${req.contaId}`);
+    }
+
     if (ativo !== undefined) query = query.eq('ativo', ativo === 'true');
     if (grupo_id)            query = query.eq('grupo_id', grupo_id);
+
     const { data, error } = await query;
     if (error) throw error;
 
-    // Flatten: adiciona grupo_nome para facilitar o frontend
     const itens = (data || []).map(i => ({
       ...i,
+      global:     i.conta_id === null,
       grupo_nome: i.grupos_verificacao?.nome || null,
       grupos_verificacao: undefined
     }));
@@ -36,8 +54,7 @@ router.get('/', requireAuth, async (req, res) => {
 
 // ─────────────────────────────────────────
 // POST /api/itens
-// Cria um item de verificação
-// body: { descricao, grupo_id? }
+// Cria item: admin → escopo da conta; super_admin → global (conta_id NULL)
 // ─────────────────────────────────────────
 router.post('/', requireAuth, async (req, res) => {
   try {
@@ -45,15 +62,24 @@ router.post('/', requireAuth, async (req, res) => {
     if (!descricao?.trim()) {
       return res.status(400).json({ ok: false, error: 'Descrição é obrigatória' });
     }
+
     const payload = { descricao: descricao.trim(), ativo: true };
     if (grupo_id) payload.grupo_id = grupo_id;
+
+    // super_admin cria global (null); demais criam no escopo da sua conta
+    payload.conta_id = req.userPerfil === 'super_admin' ? null : req.contaId;
+
     const { data, error } = await supabase
       .from('itens_verificacao')
       .insert(payload)
-      .select('id, descricao, ativo, grupo_id, grupos_verificacao(id, nome), criado_em')
+      .select('id, descricao, ativo, grupo_id, conta_id, grupos_verificacao(id, nome), criado_em')
       .single();
     if (error) throw error;
-    res.status(201).json({ ok: true, data: { ...data, grupo_nome: data.grupos_verificacao?.nome || null } });
+
+    res.status(201).json({
+      ok: true,
+      data: { ...data, global: data.conta_id === null, grupo_nome: data.grupos_verificacao?.nome || null }
+    });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
@@ -61,8 +87,7 @@ router.post('/', requireAuth, async (req, res) => {
 
 // ─────────────────────────────────────────
 // PUT /api/itens/:id
-// Edita descrição e/ou grupo de um item
-// body: { descricao, grupo_id? }
+// Só edita itens da própria conta (ou super_admin edita qualquer)
 // ─────────────────────────────────────────
 router.put('/:id', requireAuth, async (req, res) => {
   try {
@@ -71,17 +96,19 @@ router.put('/:id', requireAuth, async (req, res) => {
     if (!descricao?.trim()) {
       return res.status(400).json({ ok: false, error: 'Descrição é obrigatória' });
     }
-    const payload = { descricao: descricao.trim() };
-    payload.grupo_id = grupo_id || null;
+    if (!(await podeMutate(id, req.userPerfil, req.contaId))) {
+      return res.status(403).json({ ok: false, error: 'Sem permissão para editar este item' });
+    }
+    const payload = { descricao: descricao.trim(), grupo_id: grupo_id || null };
     const { data, error } = await supabase
       .from('itens_verificacao')
       .update(payload)
       .eq('id', id)
-      .select('id, descricao, ativo, grupo_id, grupos_verificacao(id, nome), criado_em')
+      .select('id, descricao, ativo, grupo_id, conta_id, grupos_verificacao(id, nome), criado_em')
       .single();
     if (error) throw error;
     if (!data) return res.status(404).json({ ok: false, error: 'Item não encontrado' });
-    res.json({ ok: true, data: { ...data, grupo_nome: data.grupos_verificacao?.nome || null } });
+    res.json({ ok: true, data: { ...data, global: data.conta_id === null, grupo_nome: data.grupos_verificacao?.nome || null } });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
@@ -93,8 +120,12 @@ router.put('/:id', requireAuth, async (req, res) => {
 // ─────────────────────────────────────────
 router.patch('/:id/ativar', requireAuth, async (req, res) => {
   try {
+    const { id } = req.params;
+    if (!(await podeMutate(id, req.userPerfil, req.contaId))) {
+      return res.status(403).json({ ok: false, error: 'Sem permissão para alterar este item' });
+    }
     const { data, error } = await supabase
-      .from('itens_verificacao').update({ ativo: true }).eq('id', req.params.id).select().single();
+      .from('itens_verificacao').update({ ativo: true }).eq('id', id).select().single();
     if (error) throw error;
     if (!data) return res.status(404).json({ ok: false, error: 'Item não encontrado' });
     res.json({ ok: true, data });
@@ -105,8 +136,12 @@ router.patch('/:id/ativar', requireAuth, async (req, res) => {
 
 router.patch('/:id/desativar', requireAuth, async (req, res) => {
   try {
+    const { id } = req.params;
+    if (!(await podeMutate(id, req.userPerfil, req.contaId))) {
+      return res.status(403).json({ ok: false, error: 'Sem permissão para alterar este item' });
+    }
     const { data, error } = await supabase
-      .from('itens_verificacao').update({ ativo: false }).eq('id', req.params.id).select().single();
+      .from('itens_verificacao').update({ ativo: false }).eq('id', id).select().single();
     if (error) throw error;
     if (!data) return res.status(404).json({ ok: false, error: 'Item não encontrado' });
     res.json({ ok: true, data });
