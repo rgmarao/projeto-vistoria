@@ -165,3 +165,18 @@ export const areas = {
   listar:    (unidade_id) => apiFetch(`/api/unidades/${unidade_id}/areas`),
   checklist: (unidade_id) => apiFetch(`/api/unidades/${unidade_id}/checklist`)
 };
+
+// ── Planos de Ação ─────────────────────────────────────────────
+export const planosAcao = {
+  listar:          (params = {})          => apiFetch(`/api/planos-acao?${new URLSearchParams(params)}`),
+  detalhe:         (id)                   => apiFetch(`/api/planos-acao/${id}`),
+  criar:           (body)                 => apiFetch('/api/planos-acao', { method: 'POST', body: JSON.stringify(body) }),
+  editar:          (id, body)             => apiFetch(`/api/planos-acao/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+  adicionarItem:   (id, body)             => apiFetch(`/api/planos-acao/${id}/itens`, { method: 'POST', body: JSON.stringify(body) }),
+  removerItem:     (id, item_id)          => apiFetch(`/api/planos-acao/${id}/itens/${item_id}`, { method: 'DELETE' }),
+  adicionarTarefa: (id, item_id, body)    => apiFetch(`/api/planos-acao/${id}/itens/${item_id}/tarefas`, { method: 'POST', body: JSON.stringify(body) }),
+  editarTarefa:    (tarefa_id, body)      => apiFetch(`/api/planos-acao/tarefas/${tarefa_id}`, { method: 'PUT', body: JSON.stringify(body) }),
+  excluirTarefa:   (tarefa_id)            => apiFetch(`/api/planos-acao/tarefas/${tarefa_id}`, { method: 'DELETE' }),
+  aprovarTarefa:   (tarefa_id)            => apiFetch(`/api/planos-acao/tarefas/${tarefa_id}/aprovar`, { method: 'PATCH' }),
+  minhasTarefas:   ()                     => apiFetch('/api/planos-acao/minhas-tarefas')
+};
