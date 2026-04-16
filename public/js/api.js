@@ -25,6 +25,12 @@ export function requireRole(role, redirectTo = '/index.html') {
   if (!user || user.perfil !== role) window.location.href = redirectTo;
 }
 
+// Aceita um array de perfis permitidos
+export function requireRoles(roles, redirectTo = '/index.html') {
+  const user = getUser();
+  if (!user || !roles.includes(user.perfil)) window.location.href = redirectTo;
+}
+
 // ── Fetch helper ───────────────────────────────────────────────
 async function apiFetch(path, options = {}) {
   const token = getToken();
@@ -164,6 +170,17 @@ export const estrutura = {
 export const areas = {
   listar:    (unidade_id) => apiFetch(`/api/unidades/${unidade_id}/areas`),
   checklist: (unidade_id) => apiFetch(`/api/unidades/${unidade_id}/checklist`)
+};
+
+// ── Contas (multi-tenant) ─────────────────────────────────────
+export const contas = {
+  listar:    (qs = '')   => apiFetch(`/api/contas${qs}`),
+  minha:     ()          => apiFetch('/api/contas/minha'),
+  detalhe:   (id)        => apiFetch(`/api/contas/${id}`),
+  criar:     (body)      => apiFetch('/api/contas',       { method: 'POST',  body: JSON.stringify(body) }),
+  editar:    (id, body)  => apiFetch(`/api/contas/${id}`, { method: 'PUT',   body: JSON.stringify(body) }),
+  ativar:    (id)        => apiFetch(`/api/contas/${id}/ativar`,    { method: 'PATCH' }),
+  desativar: (id)        => apiFetch(`/api/contas/${id}/desativar`, { method: 'PATCH' })
 };
 
 // ── Planos de Ação ─────────────────────────────────────────────

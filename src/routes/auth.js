@@ -27,17 +27,18 @@ router.post('/login', async (req, res) => {
 
     const { data: perfil } = await supabase
       .from('perfis')
-      .select('nome, perfil')
+      .select('nome, perfil, conta_id')
       .eq('id', data.user.id)
       .single();
 
     return res.json({
       message: '✅ Login realizado com sucesso',
       user: {
-        id:    data.user.id,
-        email: data.user.email,
-        nome:  perfil?.nome  || null,
-        role:  perfil?.perfil || data.user.user_metadata?.role || 'vistoriador'
+        id:       data.user.id,
+        email:    data.user.email,
+        nome:     perfil?.nome     || null,
+        role:     perfil?.perfil   || data.user.user_metadata?.role || 'vistoriador',
+        conta_id: perfil?.conta_id || null
       },
       token: data.session.access_token
     });
@@ -76,16 +77,17 @@ router.get('/me', requireAuth, async (req, res) => {
   try {
     const { data: perfil } = await supabase
       .from('perfis')
-      .select('nome, perfil')
+      .select('nome, perfil, conta_id')
       .eq('id', req.user.id)
       .single();
 
     return res.json({
       user: {
-        id:    req.user.id,
-        email: req.user.email,
-        nome:  perfil?.nome  || null,
-        role:  perfil?.perfil || req.user.user_metadata?.role || 'vistoriador'
+        id:       req.user.id,
+        email:    req.user.email,
+        nome:     perfil?.nome     || null,
+        role:     perfil?.perfil   || req.user.user_metadata?.role || 'vistoriador',
+        conta_id: perfil?.conta_id || null
       }
     });
 

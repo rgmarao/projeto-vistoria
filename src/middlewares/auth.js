@@ -3,7 +3,7 @@ import { supabase } from '../config/supabase.js';
 export const requireAuth = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({ error: 'Missing or invalid authorization header' });
     }
@@ -15,7 +15,16 @@ export const requireAuth = async (req, res, next) => {
       return res.status(401).json({ error: error?.message || 'Invalid token' });
     }
 
-    req.user = user;
+    // Busca perfil para injetar role e conta_id em todas as rotas
+    const { data: perfil } = await supabase
+      .from('perfis')
+      .select('perfil, conta_id')
+      .eq('id', user.id)
+      .single();
+
+    req.user       = user;
+    req.userPerfil = perfil?.perfil  || null;
+    req.contaId    = perfil?.conta_id || null;
     next();
   } catch (error) {
     res.status(500).json({ error: 'Internal server error during authentication' });

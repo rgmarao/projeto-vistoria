@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VistorIA — Criar Conta</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/css/tabler.min.css" />
+  <style>
+    body { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #f4f6fa; }
+    .login-logo img { max-height: 72px; margin-bottom: 8px; }
+  </style>
+</head>
+<body class="antialiased">
+  <div class="container-tight py-4">
+    <div class="text-center mb-4 login-logo">
+      <img src="/img/logo-vistoria.png" alt="VistorIA" />
+      <p class="text-muted mt-1">Crie sua conta e comece agora</p>
+    </div>
+
+    <div class="card card-md">
+      <div class="card-body">
+        <h2 class="card-title text-center mb-4">Nova conta</h2>
+
+        <div class="alert alert-danger d-none" id="alert-erro"></div>
+        <div class="alert alert-success d-none" id="alert-sucesso"></div>
+
+        <form id="form-registro">
+          <div class="mb-3">
+            <label class="form-label">Nome da empresa / organização <span class="text-danger">*</span></label>
+            <input type="text" id="nome_conta" class="form-control" placeholder="Ex: Construtora ABC" required />
+            <small class="form-hint">Será o nome da sua conta na plataforma.</small>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Seu nome <span class="text-danger">*</span></label>
+            <input type="text" id="nome_admin" class="form-control" placeholder="Seu nome completo" required />
+          </div>
+          <div class="mb-3">
+            <label class="form-label">E-mail <span class="text-danger">*</span></label>
+            <input type="email" id="email" class="form-control" placeholder="seu@email.com" required />
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Senha <span class="text-danger">*</span></label>
+            <input type="password" id="senha" class="form-control" placeholder="Mínimo 6 caracteres" required minlength="6" />
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Confirmar senha <span class="text-danger">*</span></label>
+            <input type="password" id="senha_confirm" class="form-control" placeholder="Repita a senha" required />
+          </div>
+          <div class="form-footer">
+            <button type="submit" class="btn btn-primary w-100" id="btn-criar">Criar conta</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="text-center text-muted mt-3">
+      Já tem uma conta? <a href="/index.html">Faça login</a>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/js/tabler.min.js"></script>
+  <script type="module">
+    import { saveSession, isLoggedIn } from '/js/api.js';
+
+    if (isLoggedIn()) window.location.href = '/admin/index.html';
+
+    document.getElementById('form-registro').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const btn          = document.getElementById('btn-criar');
+      const alertErro    = document.getElementById('alert-erro');
+      const alertSucesso = document.getElementById('alert-sucesso');
+
+      const nome_conta    = document.getElementById('nome_conta').value.trim();
+      const nome_admin    = document.getElementById('nome_admin').value.trim();
+      const email         = document.getElementById('email').value.trim();
+      const senha         = document.getElementById('senha').value;
+      const senhaConfirm  = document.getElementById('senha_confirm').value;
+
+      alertErro.classList.add('d-none');
+      alertSucesso.classList.add('d-none');
+
+      if (senha !== senhaConfirm) {
+        alertErro.textContent = 'As senhas não coincidem.';
+        alertErro.classList.remove('d-none');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Criando conta...';
+
+      try {
+        const res = await fetch('/api/contas/registro', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nome_conta, nome_admin, email, senha })
+        });
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.error || 'Erro ao criar conta');
+
+        if (data.token) {
+          // Login imediato
+          saveSession(data.token, {
+            id:     data.user.id,
+            email:  data.user.email,
+            nome:   data.user.nome,
+            perfil: data.user.role,
+            conta_id: data.conta.id
+          });
+          alertSucesso.textContent = `✅ Conta "${data.conta.nome}" criada! Redirecionando...`;
+          alertSucesso.classList.remove('d-none');
+          setTimeout(() => { window.location.href = '/admin/index.html'; }, 1500);
+        } else {
+          alertSucesso.textContent = data.message || '✅ Conta criada! Faça login para continuar.';
+          alertSucesso.classList.remove('d-none');
+          btn.textContent = 'Ir para o login';
+          btn.disabled = false;
+          btn.onclick = () => { window.location.href = '/index.html'; };
+        }
+      } catch (err) {
+        alertErro.textContent = err.message;
+        alertErro.classList.remove('d-none');
+        btn.disabled = false;
+        btn.textContent = 'Criar conta';
+      }
+    });
+  </script>
+</body>
+</html>

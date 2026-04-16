@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Super Admin — Contas · VistorIA</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/css/tabler.min.css" />
+</head>
+<body class="antialiased">
+
+  <header class="navbar navbar-expand-md d-print-none">
+    <div class="container-xl">
+      <a href="/super-admin/index.html" class="navbar-brand">
+        <img src="/img/logo-vistoria.png" alt="VistorIA" height="32" class="navbar-brand-image me-2" />
+        <span class="badge bg-danger ms-1">Super Admin</span>
+      </a>
+      <div class="navbar-nav flex-row order-md-last gap-2 align-items-center">
+        <span class="d-none d-md-block text-muted fs-5" id="navbar-user"></span>
+        <a href="#" class="btn btn-ghost-secondary btn-icon" onclick="logout()" title="Sair">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M14 8v-2a2 2 0 0 0 -2 -2h-7a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2 -2v-2"/><path d="M9 12h12l-3 -3m0 6l3 -3"/></svg>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <div class="page-wrapper">
+    <div class="page-header d-print-none">
+      <div class="container-xl">
+        <div class="row g-2 align-items-center">
+          <div class="col">
+            <div class="page-pretitle">Plataforma VistorIA</div>
+            <h2 class="page-title">Contas</h2>
+          </div>
+          <div class="col-auto ms-auto">
+            <button class="btn btn-primary" onclick="abrirModalNovaConta()">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Nova Conta
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page-body">
+      <div class="container-xl">
+
+        <!-- Stats -->
+        <div class="row row-deck row-cards mb-4">
+          <div class="col-sm-4">
+            <div class="card">
+              <div class="card-body">
+                <div class="subheader mb-1">Total de contas</div>
+                <div class="h1" id="stat-total">—</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-4">
+            <div class="card">
+              <div class="card-body">
+                <div class="subheader mb-1">Contas ativas</div>
+                <div class="h1 text-success" id="stat-ativas">—</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-4">
+            <div class="card">
+              <div class="card-body">
+                <div class="subheader mb-1">Contas inativas</div>
+                <div class="h1 text-danger" id="stat-inativas">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabela de contas -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Todas as contas</div>
+            <div class="card-options">
+              <select class="form-select form-select-sm" id="filtro-ativo" onchange="filtrar()">
+                <option value="">Todas</option>
+                <option value="true">Ativas</option>
+                <option value="false">Inativas</option>
+              </select>
+            </div>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-vcenter card-table">
+                <thead>
+                  <tr>
+                    <th>Nome</th>
+                    <th>Slug</th>
+                    <th>Plano</th>
+                    <th>Empresas</th>
+                    <th>Usuários</th>
+                    <th>Status</th>
+                    <th>Criado em</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-contas">
+                  <tr><td colspan="8" class="text-center text-muted py-4">Carregando...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Nova Conta / Editar -->
+  <div class="modal modal-blur fade" id="modal-conta" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-sm modal-dialog-centered" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modal-titulo">Nova Conta</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-danger d-none" id="modal-erro"></div>
+          <input type="hidden" id="conta-id" />
+          <div class="mb-3">
+            <label class="form-label">Nome <span class="text-danger">*</span></label>
+            <input type="text" id="conta-nome" class="form-control" placeholder="Nome da conta" />
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Plano</label>
+            <select id="conta-plano" class="form-select">
+              <option value="basico">Básico</option>
+              <option value="profissional">Profissional</option>
+              <option value="enterprise">Enterprise</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-link link-secondary me-auto" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="btn-salvar-conta" onclick="salvarConta()">Salvar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- App Dialog -->
+  <div id="app-dialog"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/js/tabler.min.js"></script>
+  <script type="module">
+    import { getUser, requireRole, auth, contas } from '/js/api.js';
+
+    requireRole('super_admin');
+
+    const user = getUser();
+    document.getElementById('navbar-user').textContent = user?.nome || user?.email || '';
+
+    let todasContas = [];
+
+    async function carregarContas(ativo) {
+      const params = ativo !== undefined && ativo !== '' ? `?ativo=${ativo}` : '';
+      const res = await contas.listar(params);
+      todasContas = res.data || [];
+      renderTabela(todasContas);
+      atualizarStats(todasContas);
+    }
+
+    function atualizarStats(lista) {
+      document.getElementById('stat-total').textContent    = lista.length;
+      document.getElementById('stat-ativas').textContent   = lista.filter(c => c.ativo).length;
+      document.getElementById('stat-inativas').textContent = lista.filter(c => !c.ativo).length;
+    }
+
+    function renderTabela(lista) {
+      const tbody = document.getElementById('tbody-contas');
+      if (!lista.length) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">Nenhuma conta encontrada.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = lista.map(c => `
+        <tr>
+          <td><strong>${c.nome}</strong></td>
+          <td><code>${c.slug}</code></td>
+          <td>${badgePlano(c.plano)}</td>
+          <td>${c.total_empresas ?? '—'}</td>
+          <td>${c.total_usuarios ?? '—'}</td>
+          <td>${c.ativo
+            ? '<span class="badge bg-success-lt">Ativa</span>'
+            : '<span class="badge bg-danger-lt">Inativa</span>'}</td>
+          <td>${new Date(c.criado_em).toLocaleDateString('pt-BR')}</td>
+          <td class="text-end">
+            <div class="btn-group">
+              <button class="btn btn-sm btn-ghost-secondary" onclick="editarConta(${JSON.stringify(c.id).replace(/"/g, '&quot;')}, ${JSON.stringify(c.nome).replace(/"/g, '&quot;')}, ${JSON.stringify(c.plano).replace(/"/g, '&quot;')})">Editar</button>
+              ${c.ativo
+                ? `<button class="btn btn-sm btn-ghost-danger" onclick="toggleAtivo(${JSON.stringify(c.id).replace(/"/g, '&quot;')}, false)">Desativar</button>`
+                : `<button class="btn btn-sm btn-ghost-success" onclick="toggleAtivo(${JSON.stringify(c.id).replace(/"/g, '&quot;')}, true)">Ativar</button>`}
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function badgePlano(plano) {
+      const cores = { basico: 'bg-blue-lt', profissional: 'bg-purple-lt', enterprise: 'bg-yellow-lt' };
+      const labels = { basico: 'Básico', profissional: 'Profissional', enterprise: 'Enterprise' };
+      return `<span class="badge ${cores[plano] || 'bg-secondary-lt'}">${labels[plano] || plano}</span>`;
+    }
+
+    window.filtrar = () => {
+      const v = document.getElementById('filtro-ativo').value;
+      carregarContas(v);
+    };
+
+    window.abrirModalNovaConta = () => {
+      document.getElementById('conta-id').value   = '';
+      document.getElementById('conta-nome').value = '';
+      document.getElementById('conta-plano').value = 'basico';
+      document.getElementById('modal-titulo').textContent = 'Nova Conta';
+      document.getElementById('modal-erro').classList.add('d-none');
+      const modal = new bootstrap.Modal(document.getElementById('modal-conta'));
+      modal.show();
+    };
+
+    window.editarConta = (id, nome, plano) => {
+      document.getElementById('conta-id').value    = id;
+      document.getElementById('conta-nome').value  = nome;
+      document.getElementById('conta-plano').value = plano;
+      document.getElementById('modal-titulo').textContent = 'Editar Conta';
+      document.getElementById('modal-erro').classList.add('d-none');
+      const modal = new bootstrap.Modal(document.getElementById('modal-conta'));
+      modal.show();
+    };
+
+    window.salvarConta = async () => {
+      const id    = document.getElementById('conta-id').value;
+      const nome  = document.getElementById('conta-nome').value.trim();
+      const plano = document.getElementById('conta-plano').value;
+      const errEl = document.getElementById('modal-erro');
+
+      if (!nome) { errEl.textContent = 'Nome é obrigatório.'; errEl.classList.remove('d-none'); return; }
+      errEl.classList.add('d-none');
+
+      try {
+        if (id) {
+          await contas.editar(id, { nome, plano });
+        } else {
+          await contas.criar({ nome, plano });
+        }
+        bootstrap.Modal.getInstance(document.getElementById('modal-conta')).hide();
+        carregarContas();
+      } catch (err) {
+        errEl.textContent = err.message;
+        errEl.classList.remove('d-none');
+      }
+    };
+
+    window.toggleAtivo = async (id, ativar) => {
+      try {
+        if (ativar) await contas.ativar(id);
+        else        await contas.desativar(id);
+        carregarContas();
+      } catch (err) {
+        alert(err.message);
+      }
+    };
+
+    window.logout = async () => {
+      await auth.logout();
+      window.location.href = '/index.html';
+    };
+
+    carregarContas();
+  </script>
+</body>
+</html>

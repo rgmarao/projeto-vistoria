@@ -12,10 +12,12 @@ router.get('/', requireAuth, async (req, res) => {
   try {
     const { ativo } = req.query;
 
-    let query = supabase
-      .from('empresas')
-      .select('*')
-      .order('nome');
+    let query = supabase.from('empresas').select('*').order('nome');
+
+    // Isolamento de tenant: super_admin vê tudo; demais veem apenas sua conta
+    if (req.userPerfil !== 'super_admin') {
+      query = query.eq('conta_id', req.contaId);
+    }
 
     if (ativo !== undefined) {
       query = query.eq('ativo', ativo === 'true');
@@ -37,12 +39,13 @@ router.get('/:id', requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
 
-    const { data, error } = await supabase
-      .from('empresas')
-      .select('*, unidades(*)')
-      .eq('id', id)
-      .single();
+    let query = supabase.from('empresas').select('*, unidades(*)').eq('id', id);
 
+    if (req.userPerfil !== 'super_admin') {
+      query = query.eq('conta_id', req.contaId);
+    }
+
+    const { data, error } = await query.single();
     if (error) throw error;
     if (!data) return res.status(404).json({ ok: false, error: 'Empresa não encontrada' });
 
@@ -58,12 +61,10 @@ router.get('/:id', requireAuth, async (req, res) => {
 router.get('/:id/semaforos', requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const { data, error } = await supabase
-      .from('empresas')
-      .select('configuracao_semaforos')
-      .eq('id', id)
-      .single();
+    let query = supabase.from('empresas').select('configuracao_semaforos').eq('id', id);
+    if (req.userPerfil !== 'super_admin') query = query.eq('conta_id', req.contaId);
 
+    const { data, error } = await query.single();
     if (error || !data) return res.status(404).json({ ok: false, error: 'Empresa não encontrada' });
 
     const semaforos = resolveSemaforos(data.configuracao_semaforos, null);
@@ -84,9 +85,14 @@ router.post('/', requireAuth, async (req, res) => {
       return res.status(400).json({ ok: false, error: 'Campo "nome" é obrigatório' });
     }
 
+    // Injeta conta_id do usuário logado (super_admin pode informar explicitamente)
+    const conta_id = req.userPerfil === 'super_admin'
+      ? (req.body.conta_id || null)
+      : req.contaId;
+
     const { data, error } = await supabase
       .from('empresas')
-      .insert({ nome, cnpj, logo_url, configuracao_semaforos: configuracao_semaforos || null, ativo: true })
+      .insert({ nome, cnpj, logo_url, configuracao_semaforos: configuracao_semaforos || null, ativo: true, conta_id })
       .select()
       .single();
 
@@ -113,13 +119,10 @@ router.put('/:id', requireAuth, async (req, res) => {
     if (configuracao_semaforos  !== undefined) campos.configuracao_semaforos  = configuracao_semaforos;
     campos.atualizado_em = new Date().toISOString();
 
-    const { data, error } = await supabase
-      .from('empresas')
-      .update(campos)
-      .eq('id', id)
-      .select()
-      .single();
+    let query = supabase.from('empresas').update(campos).eq('id', id);
+    if (req.userPerfil !== 'super_admin') query = query.eq('conta_id', req.contaId);
 
+    const { data, error } = await query.select().single();
     if (error) throw error;
     if (!data) return res.status(404).json({ ok: false, error: 'Empresa não encontrada' });
 
@@ -130,19 +133,15 @@ router.put('/:id', requireAuth, async (req, res) => {
 });
 
 // ─────────────────────────────────────────
-// PATCH /api/empresas/:id/desativar — Desativar
+// PATCH /api/empresas/:id/desativar
 // ─────────────────────────────────────────
 router.patch('/:id/desativar', requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
+    let query = supabase.from('empresas').update({ ativo: false, atualizado_em: new Date().toISOString() }).eq('id', id);
+    if (req.userPerfil !== 'super_admin') query = query.eq('conta_id', req.contaId);
 
-    const { data, error } = await supabase
-      .from('empresas')
-      .update({ ativo: false, atualizado_em: new Date().toISOString() })
-      .eq('id', id)
-      .select()
-      .single();
-
+    const { data, error } = await query.select().single();
     if (error) throw error;
     if (!data) return res.status(404).json({ ok: false, error: 'Empresa não encontrada' });
 
@@ -153,19 +152,15 @@ router.patch('/:id/desativar', requireAuth, async (req, res) => {
 });
 
 // ─────────────────────────────────────────
-// PATCH /api/empresas/:id/ativar — Reativar
+// PATCH /api/empresas/:id/ativar
 // ─────────────────────────────────────────
 router.patch('/:id/ativar', requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
+    let query = supabase.from('empresas').update({ ativo: true, atualizado_em: new Date().toISOString() }).eq('id', id);
+    if (req.userPerfil !== 'super_admin') query = query.eq('conta_id', req.contaId);
 
-    const { data, error } = await supabase
-      .from('empresas')
-      .update({ ativo: true, atualizado_em: new Date().toISOString() })
-      .eq('id', id)
-      .select()
-      .single();
-
+    const { data, error } = await query.select().single();
     if (error) throw error;
     if (!data) return res.status(404).json({ ok: false, error: 'Empresa não encontrada' });
 

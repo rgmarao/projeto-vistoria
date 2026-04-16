@@ -34,6 +34,10 @@
         </form>
       </div>
     </div>
+
+    <div class="text-center text-muted mt-3">
+      Não tem conta? <a href="/registro.html">Criar conta grátis</a>
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/js/tabler.min.js"></script>
@@ -60,10 +64,11 @@
         });
         const perfilData = await res.json();
         const user = {
-          id:     data.user.id,
-          email:  data.user.email,
-          nome:   perfilData.data?.nome || data.user.email,
-          perfil: perfilData.data?.perfil || 'usuario'
+          id:       data.user.id,
+          email:    data.user.email,
+          nome:     perfilData.data?.nome || data.user.email,
+          perfil:   perfilData.data?.perfil || 'usuario',
+          conta_id: perfilData.data?.conta_id || null
         };
         saveSession(data.token, user);
         redirecionar(user);
@@ -76,8 +81,9 @@
     });
 
     function redirecionar(user) {
-      if (user.perfil === 'admin') window.location.href = '/admin/index.html';
-      else window.location.href = '/analista/index.html';
+      if (user.perfil === 'super_admin') window.location.href = '/super-admin/index.html';
+      else if (user.perfil === 'admin')  window.location.href = '/admin/index.html';
+      else                               window.location.href = '/analista/index.html';
     }
   </script>
 </body>
