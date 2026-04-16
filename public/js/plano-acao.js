@@ -249,7 +249,10 @@ function renderTarefa(t) {
 
 // ── Modal: Criar Plano ─────────────────────────────────────────
 window.abrirModalCriar = async () => {
-  document.getElementById('criar-titulo').value = '';
+  const dataVis = visitoriaAtual?.data_criacao
+    ? new Date(visitoriaAtual.data_criacao).toLocaleDateString('pt-BR')
+    : '';
+  document.getElementById('criar-titulo').value = dataVis ? `Plano de Ação Vistoria ${dataVis}` : '';
   document.getElementById('criar-obs').value    = '';
   document.getElementById('criar-erro').classList.add('d-none');
 

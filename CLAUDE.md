@@ -556,9 +556,17 @@ app.use('/api', relatoriosRoutes);
 - **Melhoria 4:** Plano de Ação — tabelas `planos_acao`, `plano_acao_itens`, `plano_acao_tarefas`; novo perfil `gestor`; páginas `analista/plano-acao.html` e `analista/minhas-tarefas.html`; botão na vistoria finalizada/publicada; aprovação por gestor/admin
 
 ### Pendente (plano de Melhorias)
-Plano completo salvo em `/root/.claude/plans/modular-spinning-turing.md`. Ordem acordada com o usuário:
 
-- **Melhoria 5 — Fundação SaaS / Multi-tenant:** hierarquia Conta > Empresas > Unidades. Nova tabela `contas`, FK `conta_id` em `empresas` e `perfis`. Novo perfil `super_admin`. Middleware `tenant.js` filtra por `conta_id`. Self-service em `/registro.html` + painel super-admin. Migração dados existentes → conta padrão.
+- **Melhoria 5 — Fundação SaaS / Multi-tenant:**
+  - Nova tabela `contas` (id, nome, slug, plano, ativo, criado_em)
+  - FK `conta_id` em `empresas` e `perfis` (ambas NULLABLE inicialmente para migração suave)
+  - Novo perfil `super_admin` — acesso cross-tenant, gerencia contas
+  - Middleware `src/middlewares/tenant.js` — extrai `conta_id` do perfil logado e injeta em todas as queries
+  - Self-service: `/registro.html` cria conta + usuário admin num só fluxo
+  - Painel `/super-admin/` — listar contas, ativar/desativar, trocar plano
+  - Migration: criar tabela `contas`, adicionar FK, migrar dados existentes → conta padrão `id=1`
+  - Estratégia: não quebrar dados existentes — conta padrão recebe tudo que tiver `conta_id = NULL`
+
 - **Melhoria 6 — i18n (multilíngue):** tabelas `idiomas` e `traducoes`; API `/api/traducoes`; `public/js/i18n.js` com `t(key)` e `translatePage()`. Adoção incremental por data-attributes. Idiomas iniciais: pt_br, en.
 
 ### Pendente (outros, fora do plano)
@@ -653,3 +661,9 @@ Plano completo salvo em `/root/.claude/plans/modular-spinning-turing.md`. Ordem 
 - Nem sempre o servidor está caído — o Preview do Replit é flaky e pode perder conexão com o processo Node saudável
 - Sempre confirmar na aba **Console** se aparece `✅ Servidor rodando na porta 5000` antes de assumir crash
 - Alternativa: acessar direto pela URL pública `{...}.replit.dev` mostrada no topo do Console
+
+### GET /api/vistorias/:id — resposta diferente dos demais endpoints
+- **Todos** os endpoints retornam `{ ok: true, data: {...} }`, **exceto** `GET /api/vistorias/:id`
+- Esse endpoint retorna `{ vistoria: { ...data, ocorrencias: [...] } }` (formato legado)
+- Sintoma: `rv.data` é `undefined` ao chamar `vistorias.detalhe(id)` — usar `rv.vistoria` 
+- Não corrigir o formato do endpoint para não quebrar `analista/vistoria.html` que já depende de `rv.vistoria`
