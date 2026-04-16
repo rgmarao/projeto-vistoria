@@ -70,6 +70,7 @@ projeto-vistoria/
 │       ├── itens.js            # /api/itens — itens de verificação globais
 │       ├── empresas.js         # /api/empresas — CRUD
 │       ├── unidades.js         # /api/unidades — CRUD + logo upload
+│       ├── planosAcao.js       # /api/planos-acao — CRUD + tarefas + aprovar
 │       ├── perfis.js           # /api/perfis — CRUD + vínculo com unidades
 │       ├── usuarios.js         # /api/usuarios — listagem e gestão
 │       └── relatorios.js       # /api/vistorias/:id/pdf + /pdf/pendencias (PDFKit)
@@ -84,6 +85,7 @@ projeto-vistoria/
     │   └── style.css           # Estilos globais web
     ├── js/
     │   ├── api.js              # Cliente HTTP (apiFetch + apiFetchForm + exports por módulo)
+    │   ├── plano-acao.js       # Lógica da página /analista/plano-acao.html
     │   └── db.js               # IndexedDB: stores checklists + vistorias; uuid(); dataURLtoBlob()
     ├── admin/                  # Painel administrativo (Tabler)
     │   ├── index.html          # Dashboard admin
@@ -95,7 +97,9 @@ projeto-vistoria/
     ├── analista/               # Painel do analista (Tabler)
     │   ├── index.html          # Dashboard analista
     │   ├── vistorias.html      # Listagem de vistorias
-    │   └── vistoria.html       # Detalhe/edição de vistoria (inclui PDF, reabrir, publicar)
+    │   ├── vistoria.html       # Detalhe/edição de vistoria (inclui PDF, reabrir, publicar, botão Plano de Ação)
+    │   ├── plano-acao.html     # Plano de Ação por vistoria (?vistoria_id= ou ?id=)
+    │   └── minhas-tarefas.html # Tarefas do usuário logado (todos os perfis)
     └── app/                    # PWA mobile-first
         ├── index.html          # Tela de login do app
         ├── home.html           # Home: lista unidades, sync bar, menu avatar
@@ -190,7 +194,7 @@ git push origin main
 |-------|------|-----------|
 | id | uuid PK | FK → auth.users(id), mesmo UUID do Supabase Auth |
 | nome | text | Nome completo do usuário, NOT NULL |
-| perfil | text | CHECK: 'admin' \| 'analista' \| 'usuario', default 'usuario' |
+| perfil | text | CHECK: 'admin' \| 'analista' \| 'usuario' \| 'gestor', default 'usuario' |
 | ativo | boolean | default true |
 | criado_em | timestamptz | NOT NULL |
 | atualizado_em | timestamptz | NULLABLE, setado pelo trigger |
@@ -292,6 +296,41 @@ git push origin main
 
 > Snapshot imutável da estrutura de uma unidade. Quando uma vistoria é criada, o campo `estrutura_versao_id` na tabela `vistorias` é vinculado à última versão publicada — garantindo que a vistoria reflita a estrutura vigente na época, mesmo que a estrutura mude depois.
 
+### `planos_acao`
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| id | uuid PK | |
+| vistoria_id | uuid FK → vistorias | UNIQUE — um plano por vistoria |
+| criado_por | uuid FK → perfis | Quem criou o plano |
+| titulo | text | NOT NULL, default 'Plano de Ação' |
+| observacoes | text | NULLABLE |
+| status | text | CHECK: 'aberto' \| 'concluido' \| 'cancelado', default 'aberto' |
+| criado_em | timestamptz | NOT NULL |
+| atualizado_em | timestamptz | NULLABLE |
+
+### `plano_acao_itens`
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| id | uuid PK | |
+| plano_id | uuid FK → planos_acao | ON DELETE CASCADE |
+| ocorrencia_id | uuid FK → ocorrencias | NULLABLE — ON DELETE SET NULL |
+| descricao | text | NOT NULL |
+| criado_em | timestamptz | NOT NULL |
+
+### `plano_acao_tarefas`
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| id | uuid PK | |
+| item_id | uuid FK → plano_acao_itens | ON DELETE CASCADE |
+| descricao | text | NOT NULL |
+| responsavel_id | uuid FK → perfis | NULLABLE — ON DELETE SET NULL |
+| prazo | date | NULLABLE |
+| status | text | CHECK: 'pendente' \| 'em_andamento' \| 'concluida' \| 'aprovada', default 'pendente' |
+| aprovado_por | uuid FK → perfis | NULLABLE |
+| aprovado_em | timestamptz | NULLABLE |
+| criado_em | timestamptz | NOT NULL |
+| atualizado_em | timestamptz | NULLABLE |
+
 ---
 
 ## 6. PERFIS DE USUÁRIO E PERMISSÕES
@@ -299,7 +338,8 @@ git push origin main
 | Perfil | Permissões |
 |--------|-----------|
 | `admin` | Acesso total a todas as rotas e recursos |
-| `analista` | Cria, preenche, finaliza e publica vistorias; gera relatórios PDF |
+| `analista` | Cria, preenche, finaliza e publica vistorias; cria e gerencia planos de ação; gera PDFs |
+| `gestor` | Visualiza planos de ação onde tem tarefas; atualiza status das suas tarefas; aprova tarefas concluídas |
 | `usuario` | Visualiza **apenas** vistorias com status `publicada` de suas unidades vinculadas |
 
 ---
@@ -512,12 +552,12 @@ app.use('/api', relatoriosRoutes);
 - **UX:** Dialogs customizados VistorIA, menu avatar com nome/email/limpar cache/sair, reabrir vistoria (web + app)
 - **Melhoria 1:** Drag-and-drop de áreas e itens (SortableJS) — grip handles, batch reorder via PATCH `/reordenar`
 - **Melhoria 2:** Grupos de verificação como entidade FK (tabela `grupos_verificacao`) — CRUD completo em `/admin/grupos.html`, select em itens, filtro por grupo, preparado para SaaS (escopo por empresa no futuro)
+- **Melhoria 3:** Semáforos Flexíveis — herança empresa → unidade via JSONB `configuracao_semaforos`; labels/visibilidade customizáveis; refletido no PDF e no app mobile
+- **Melhoria 4:** Plano de Ação — tabelas `planos_acao`, `plano_acao_itens`, `plano_acao_tarefas`; novo perfil `gestor`; páginas `analista/plano-acao.html` e `analista/minhas-tarefas.html`; botão na vistoria finalizada/publicada; aprovação por gestor/admin
 
 ### Pendente (plano de Melhorias)
 Plano completo salvo em `/root/.claude/plans/modular-spinning-turing.md`. Ordem acordada com o usuário:
 
-- **Melhoria 3 — Semáforos Flexíveis:** herança empresa → unidade via JSONB `configuracao_semaforos`; labels/visibilidade customizáveis por cliente; defaults `ok/atencao/critico`. Impacta `vistorias.js`, `relatorios.js`, `analista/vistoria.html`, `app/vistoria.html`, forms de empresa/unidade.
-- **Melhoria 4 — Plano de Ação:** novas tabelas `plano_acao`, `plano_acao_itens`, `plano_acao_tarefas`. Novo perfil `gestor` (pode aprovar tarefas). Responsável escolhido entre perfis vinculados à unidade. Páginas `analista/plano-acao.html` e `analista/minhas-tarefas.html`.
 - **Melhoria 5 — Fundação SaaS / Multi-tenant:** hierarquia Conta > Empresas > Unidades. Nova tabela `contas`, FK `conta_id` em `empresas` e `perfis`. Novo perfil `super_admin`. Middleware `tenant.js` filtra por `conta_id`. Self-service em `/registro.html` + painel super-admin. Migração dados existentes → conta padrão.
 - **Melhoria 6 — i18n (multilíngue):** tabelas `idiomas` e `traducoes`; API `/api/traducoes`; `public/js/i18n.js` com `t(key)` e `translatePage()`. Adoção incremental por data-attributes. Idiomas iniciais: pt_br, en.
 

@@ -16,6 +16,7 @@ import relatoriosRoutes from './routes/relatorios.js';
 import itensRoutes from './routes/itens.js';
 import gruposRoutes from './routes/grupos.js';
 import unidadesRoutes from './routes/unidades.js';
+import planosAcaoRoutes from './routes/planosAcao.js';
 
 const app = express();
 
@@ -51,6 +52,7 @@ app.use("/api/perfis", perfisRoutes);
 app.use('/api', relatoriosRoutes);
 app.use('/api/itens', itensRoutes);
 app.use('/api/grupos', gruposRoutes);
+app.use('/api/planos-acao', planosAcaoRoutes);
 
 // Rota não encontrada
 app.use((req, res) => {

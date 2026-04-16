@@ -118,6 +118,7 @@
         <ul class="navbar-nav">
           <li class="nav-item"><a href="/analista/index.html" class="nav-link"><span class="nav-link-title">Dashboard</span></a></li>
           <li class="nav-item active"><a href="/analista/vistorias.html" class="nav-link"><span class="nav-link-title">Vistorias</span></a></li>
+          <li class="nav-item"><a href="/analista/minhas-tarefas.html" class="nav-link"><span class="nav-link-title">Minhas Tarefas</span></a></li>
         </ul>
       </div>
     </div>
@@ -262,16 +263,19 @@
         (badgeStatus[vis.status] || vis.status);
 
       const acoes = document.getElementById('vis-acoes');
+      const btnPlano = `<a href="/analista/plano-acao.html?vistoria_id=${visId}" class="btn btn-outline-primary">📋 Plano de Ação</a>`;
       if (vis.status === 'em_andamento') {
         acoes.innerHTML = `<button class="btn btn-warning" onclick="finalizar()">Finalizar</button>`;
       } else if (vis.status === 'finalizada') {
         acoes.innerHTML = `
+          ${btnPlano}
           <button class="btn btn-ghost-secondary" onclick="baixarPDF()">⬇ PDF Completo</button>
           <button class="btn btn-ghost-danger" onclick="baixarPDFPendencias()">⬇ Pendências</button>
           <button class="btn btn-outline-warning" onclick="reabrir()">↩ Reabrir</button>
           <button class="btn btn-success" onclick="publicar()">Publicar</button>`;
       } else if (vis.status === 'publicada') {
         acoes.innerHTML = `
+          ${btnPlano}
           <button class="btn btn-ghost-secondary" onclick="baixarPDF()">⬇ PDF Completo</button>
           <button class="btn btn-ghost-danger" onclick="baixarPDFPendencias()">⬇ Pendências</button>`;
       }
