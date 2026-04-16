@@ -75,8 +75,10 @@ async function init() {
 async function carregarPorVistoria(vid) {
   try {
     // Carrega dados da vistoria
+    // O endpoint GET /api/vistorias/:id retorna { vistoria: {...} }
     const rv = await vistorias.detalhe(vid);
-    visitoriaAtual = rv.data;
+    visitoriaAtual = rv.vistoria;
+    if (!visitoriaAtual) throw new Error('Vistoria não encontrada');
     renderInfoVistoria(visitoriaAtual);
 
     // Verifica se já existe plano
