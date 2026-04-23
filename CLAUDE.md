@@ -60,23 +60,27 @@ projeto-vistoria/
 │   ├── config/
 │   │   └── supabase.js         # Cliente Supabase (SUPABASE_URL + SUPABASE_SERVICE_KEY)
 │   ├── middlewares/
-│   │   └── auth.js             # requireAuth — valida Bearer token via supabase.auth.getUser()
+│   │   ├── auth.js             # requireAuth — valida token + injeta req.userPerfil e req.contaId
+│   │   └── tenant.js           # requireSuperAdmin, requireTenant — isolamento multi-tenant
 │   └── routes/
 │       ├── auth.js             # /api/auth — login, logout, register, reset-password, me
+│       ├── contas.js           # /api/contas — CRUD (super_admin) + POST /registro (público)
 │       ├── vistorias.js        # /api/vistorias — CRUD + finalizar, publicar, reabrir, checklist
 │       ├── ocorrencias.js      # /api/vistorias/:id/ocorrencias + /api/ocorrencias/:id
 │       ├── fotos.js            # /api/ocorrencias/:id/fotos — upload/delete (Multer)
 │       ├── areas.js            # /api/unidades/:id/areas + /api/areas/:id + /api/area-itens/:id
-│       ├── itens.js            # /api/itens — itens de verificação globais
-│       ├── empresas.js         # /api/empresas — CRUD
-│       ├── unidades.js         # /api/unidades — CRUD + logo upload
+│       ├── itens.js            # /api/itens — catálogo dois níveis (global + por conta)
+│       ├── grupos.js           # /api/grupos — grupos de verificação (global + por conta)
+│       ├── empresas.js         # /api/empresas — CRUD com filtro de tenant
+│       ├── unidades.js         # /api/unidades — CRUD + logo upload, filtro via empresa→conta
 │       ├── planosAcao.js       # /api/planos-acao — CRUD + tarefas + aprovar
-│       ├── perfis.js           # /api/perfis — CRUD + vínculo com unidades
+│       ├── perfis.js           # /api/perfis — CRUD + vínculo com unidades, filtro de tenant
 │       ├── usuarios.js         # /api/usuarios — listagem e gestão
 │       └── relatorios.js       # /api/vistorias/:id/pdf + /pdf/pendencias (PDFKit)
 │
 └── public/                     # Servido como estático pelo Express
-    ├── index.html              # Login (redireciona por perfil)
+    ├── index.html              # Login (redireciona por perfil, inclui link /registro.html)
+    ├── registro.html           # Auto-cadastro: cria conta + admin em um fluxo
     ├── manifest.json           # PWA manifest (start_url: /app/index.html)
     ├── sw.js                   # Service Worker (cache offline)
     ├── img/
@@ -87,12 +91,14 @@ projeto-vistoria/
     │   ├── api.js              # Cliente HTTP (apiFetch + apiFetchForm + exports por módulo)
     │   ├── plano-acao.js       # Lógica da página /analista/plano-acao.html
     │   └── db.js               # IndexedDB: stores checklists + vistorias; uuid(); dataURLtoBlob()
+    ├── super-admin/            # Painel do super_admin (Tabler)
+    │   └── index.html          # Gestão de contas: listar, ativar/desativar, trocar plano
     ├── admin/                  # Painel administrativo (Tabler)
     │   ├── index.html          # Dashboard admin
     │   ├── empresas.html       # CRUD empresas
     │   ├── unidades.html       # CRUD unidades
     │   ├── estrutura.html      # Gestão de áreas e itens
-    │   ├── itens.html          # Gestão de itens globais
+    │   ├── itens.html          # Gestão de itens (globais + da conta)
     │   └── usuarios.html       # Gestão de usuários
     ├── analista/               # Painel do analista (Tabler)
     │   ├── index.html          # Dashboard analista
@@ -156,20 +162,37 @@ git push origin main
 
 ### Usuários de teste (apenas DEV)
 
-| Email | Senha | Perfil |
-|-------|-------|--------|
-| `admin@vistoria-dev.com` | `Dev@123` | admin |
-| `analista@vistoria-dev.com` | `Dev@123` | analista |
-| `usuario@vistoria-dev.com` | `Dev@123` | usuario |
+| Email | Senha | Perfil | Conta |
+|-------|-------|--------|-------|
+| `admin@vistoria-dev.com` | `Dev@123` | **super_admin** | NULL (cross-tenant) |
+| `analista@vistoria-dev.com` | `Dev@123` | **admin** | Conta Padrão |
+| `usuario@vistoria-dev.com` | `Dev@123` | usuario | Conta Padrão |
+| `silva@testeempresa.com` | *(senha definida no cadastro)* | admin | Teste Empresa |
+
+> `admin@vistoria-dev.com` foi promovido a `super_admin` durante os testes da Melhoria 5 — acessa `/super-admin/`. `analista@vistoria-dev.com` foi promovido a `admin` da Conta Padrão.
 
 ---
 
 ## 5. BANCO DE DADOS — TABELAS E CAMPOS
 
+### `contas` *(Melhoria 5)*
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| id | uuid PK | |
+| nome | text | NOT NULL |
+| slug | text | UNIQUE, gerado automaticamente a partir do nome |
+| plano | text | CHECK: 'basico' \| 'profissional' \| 'enterprise', default 'basico' |
+| ativo | boolean | NOT NULL, default true |
+| criado_em | timestamptz | NOT NULL |
+| atualizado_em | timestamptz | NULLABLE, setado pelo trigger |
+
+> Representa um tenant (cliente da plataforma). `super_admin` tem `conta_id = NULL` (cross-tenant). **Conta Padrão** = `id = 00000000-0000-0000-0000-000000000001`, criada para migrar dados legados.
+
 ### `empresas`
 | Campo | Tipo | Descrição |
 |-------|------|-----------|
 | id | uuid PK | |
+| conta_id | uuid FK → contas | NULLABLE (legado) — define o tenant |
 | nome | text | NOT NULL |
 | cnpj | text | NULLABLE |
 | logo_url | text | Path no bucket `fotos` (NULLABLE) |
@@ -189,17 +212,20 @@ git push origin main
 | criado_em | timestamptz | NOT NULL |
 | atualizado_em | timestamptz | NULLABLE, setado pelo trigger |
 
+> Isolamento de tenant via `empresa_id → empresas.conta_id` (não tem `conta_id` direto).
+
 ### `perfis`
 | Campo | Tipo | Descrição |
 |-------|------|-----------|
 | id | uuid PK | FK → auth.users(id), mesmo UUID do Supabase Auth |
+| conta_id | uuid FK → contas | NULLABLE — NULL para `super_admin` |
 | nome | text | Nome completo do usuário, NOT NULL |
-| perfil | text | CHECK: 'admin' \| 'analista' \| 'usuario' \| 'gestor', default 'usuario' |
+| perfil | text | CHECK: 'super_admin' \| 'admin' \| 'analista' \| 'gestor' \| 'usuario', default 'usuario' |
 | ativo | boolean | default true |
 | criado_em | timestamptz | NOT NULL |
 | atualizado_em | timestamptz | NULLABLE, setado pelo trigger |
 
-> **Login** retorna `{ user: { id, email, nome, role }, token }`. O campo `nome` vem da tabela `perfis`, não do Supabase Auth metadata.
+> **Login** retorna `{ user: { id, email, nome, role, conta_id }, token }`. O campo `nome` vem da tabela `perfis`, não do Supabase Auth metadata.
 
 ### `usuario_unidades`
 | Campo | Tipo | Descrição |
@@ -260,6 +286,7 @@ git push origin main
 | Campo | Tipo | Descrição |
 |-------|------|-----------|
 | id | uuid PK | |
+| conta_id | uuid FK → contas | NULLABLE — NULL = item global (catálogo da plataforma) |
 | descricao | text | |
 | grupo_id | uuid FK → grupos_verificacao | NULLABLE, ON DELETE SET NULL |
 | ativo | boolean | default true |
@@ -269,11 +296,12 @@ git push origin main
 | Campo | Tipo | Descrição |
 |-------|------|-----------|
 | id | uuid PK | |
+| conta_id | uuid FK → contas | NULLABLE — NULL = grupo global |
 | nome | text | NOT NULL |
 | ativo | boolean | default true |
 | criado_em | timestamptz | NOT NULL |
 
-> Rótulo/categoria para itens de verificação (ex.: "Segurança do Trabalho", "Infraestrutura"). FK em `itens_verificacao.grupo_id`. No futuro SaaS será escopado por empresa/conta.
+> **Catálogo em dois níveis:** `conta_id = NULL` = global (curado pelo `super_admin`, visível a todos); `conta_id = UUID` = específico do tenant, visível apenas a ele. A listagem sempre retorna `conta_id IS NULL OR conta_id = minha_conta`. Campo `global: true/false` retornado na resposta para o frontend diferenciar visualmente.
 
 ### `area_itens`
 | Campo | Tipo | Descrição |
@@ -335,16 +363,29 @@ git push origin main
 
 ## 6. PERFIS DE USUÁRIO E PERMISSÕES
 
-| Perfil | Permissões |
-|--------|-----------|
-| `admin` | Acesso total a todas as rotas e recursos |
-| `analista` | Cria, preenche, finaliza e publica vistorias; cria e gerencia planos de ação; gera PDFs |
-| `gestor` | Visualiza planos de ação onde tem tarefas; atualiza status das suas tarefas; aprova tarefas concluídas |
-| `usuario` | Visualiza **apenas** vistorias com status `publicada` de suas unidades vinculadas |
+| Perfil | Nome de exibição | Permissões |
+|--------|-----------------|-----------|
+| `super_admin` | Administrador da Plataforma | Acesso cross-tenant; gerencia contas no painel `/super-admin/`; cria itens/grupos globais; `conta_id = NULL` |
+| `admin` | Administrador | Acesso total dentro do seu tenant; gerencia empresas, unidades, itens, usuários da conta |
+| `analista` | Analista | Cria, preenche, finaliza e publica vistorias; cria e gerencia planos de ação; gera PDFs |
+| `gestor` | Gestor | Visualiza planos de ação onde tem tarefas; atualiza status das suas tarefas; aprova tarefas concluídas |
+| `usuario` | Colaborador | Visualiza **apenas** vistorias com status `publicada` de suas unidades vinculadas |
 
 ---
 
 ## 7. MAPA COMPLETO DE ROTAS DA API
+
+### Contas (`/api/contas`)
+| Método | Rota | Auth | Perfil | Descrição | Status |
+|--------|------|------|--------|-----------|--------|
+| GET | `/api/contas` | ✅ | super_admin | Lista todas as contas com stats | ✅ |
+| GET | `/api/contas/minha` | ✅ | todos | Retorna a conta do usuário logado | ✅ |
+| GET | `/api/contas/:id` | ✅ | super_admin ou admin da conta | Detalhe | ✅ |
+| POST | `/api/contas` | ✅ | super_admin | Cria nova conta | ✅ |
+| POST | `/api/contas/registro` | ❌ | — | Auto-cadastro: cria conta + admin + sessão | ✅ |
+| PUT | `/api/contas/:id` | ✅ | super_admin | Edita nome/plano | ✅ |
+| PATCH | `/api/contas/:id/ativar` | ✅ | super_admin | Ativa conta | ✅ |
+| PATCH | `/api/contas/:id/desativar` | ✅ | super_admin | Desativa conta | ✅ |
 
 ### Auth (`/api/auth`)
 | Método | Rota | Auth | Perfil | Descrição | Status |
@@ -530,11 +571,21 @@ app.use('/api', relatoriosRoutes);
 - O elemento `<div id="app-dialog">` deve existir no HTML de cada página que usa `dialogo()`
 - Estilo: overlay `rgba(0,0,0,.4)`, card branco com header navy `#1b3a6b`, inline styles (não Tabler)
 
+### Multi-tenant — como funciona
+- `requireAuth` (middleware) busca o perfil no banco e injeta `req.userPerfil` e `req.contaId` em **toda** requisição autenticada
+- `super_admin` tem `req.contaId = null` — bypass automático de todos os filtros de tenant
+- Rotas de `empresas` e `perfis`: filtro `.eq('conta_id', req.contaId)` para não-super_admin
+- Rotas de `unidades`: isolamento via `empresa_id IN (empresas da conta)` + helper `pertenceAoConta()`
+- Itens/grupos: filtro `.or('conta_id.is.null,conta_id.eq.UUID')` — globais + próprios
+- Em operações de escrita (POST): `conta_id` é injetado automaticamente do `req.contaId`
+
 ### Autenticação no frontend
 - Token: `localStorage.getItem('token')`
-- User: `JSON.parse(localStorage.getItem('user'))` — objeto `{ id, email, nome, role }`
-- `role` = perfil do usuário (`admin`, `analista`, `usuario`)
+- User: `JSON.parse(localStorage.getItem('user'))` — objeto `{ id, email, nome, perfil, conta_id }`
+- `perfil` = perfil do usuário (`super_admin`, `admin`, `analista`, `gestor`, `usuario`)
 - `api.js` injeta `Authorization: Bearer <token>` automaticamente
+- `requireRole(role)` — verifica perfil único; `requireRoles([...])` — verifica array de perfis
+- Redirect pós-login: `super_admin` → `/super-admin/`; `admin` → `/admin/`; demais → `/analista/`
 
 ---
 
@@ -555,17 +606,18 @@ app.use('/api', relatoriosRoutes);
 - **Melhoria 3:** Semáforos Flexíveis — herança empresa → unidade via JSONB `configuracao_semaforos`; labels/visibilidade customizáveis; refletido no PDF e no app mobile
 - **Melhoria 4:** Plano de Ação — tabelas `planos_acao`, `plano_acao_itens`, `plano_acao_tarefas`; novo perfil `gestor`; páginas `analista/plano-acao.html` e `analista/minhas-tarefas.html`; botão na vistoria finalizada/publicada; aprovação por gestor/admin
 
-### Pendente (plano de Melhorias)
+- **Melhoria 5 — Fundação SaaS / Multi-tenant:** ✅ **CONCLUÍDA**
+  - Tabela `contas` (slug único, planos, ativo/inativo) + trigger `atualizado_em`
+  - FK `conta_id` (nullable) em `empresas`, `perfis`, `itens_verificacao`, `grupos_verificacao`
+  - Perfil `super_admin` cross-tenant; `gestor` adicionado ao CHECK constraint
+  - `requireAuth` injeta `req.userPerfil` e `req.contaId`; `tenant.js` com `requireSuperAdmin` / `requireTenant`
+  - Isolamento em `empresas`, `perfis`, `unidades`, `itens`, `grupos`
+  - Catálogo de itens/grupos em dois níveis: global (`conta_id NULL`) + por tenant
+  - Self-service `/registro.html`; painel `/super-admin/index.html`
+  - `api.js`: módulo `contas`, função `requireRoles([])`; login retorna `conta_id`
+  - Migrations: `melhoria5-saas-tenant.sql` + `melhoria5-1-itens-tenant.sql`
 
-- **Melhoria 5 — Fundação SaaS / Multi-tenant:**
-  - Nova tabela `contas` (id, nome, slug, plano, ativo, criado_em)
-  - FK `conta_id` em `empresas` e `perfis` (ambas NULLABLE inicialmente para migração suave)
-  - Novo perfil `super_admin` — acesso cross-tenant, gerencia contas
-  - Middleware `src/middlewares/tenant.js` — extrai `conta_id` do perfil logado e injeta em todas as queries
-  - Self-service: `/registro.html` cria conta + usuário admin num só fluxo
-  - Painel `/super-admin/` — listar contas, ativar/desativar, trocar plano
-  - Migration: criar tabela `contas`, adicionar FK, migrar dados existentes → conta padrão `id=1`
-  - Estratégia: não quebrar dados existentes — conta padrão recebe tudo que tiver `conta_id = NULL`
+### Pendente (plano de Melhorias)
 
 - **Melhoria 6 — i18n (multilíngue):** tabelas `idiomas` e `traducoes`; API `/api/traducoes`; `public/js/i18n.js` com `t(key)` e `translatePage()`. Adoção incremental por data-attributes. Idiomas iniciais: pt_br, en.
 
@@ -661,6 +713,13 @@ app.use('/api', relatoriosRoutes);
 - Nem sempre o servidor está caído — o Preview do Replit é flaky e pode perder conexão com o processo Node saudável
 - Sempre confirmar na aba **Console** se aparece `✅ Servidor rodando na porta 5000` antes de assumir crash
 - Alternativa: acessar direto pela URL pública `{...}.replit.dev` mostrada no topo do Console
+
+### Multi-tenant — itens criados antes da migration ficam globais
+- **Causa:** ao adicionar `conta_id` (nullable) em `itens_verificacao` e `grupos_verificacao`, registros existentes ficam com `NULL` — tratados como catálogo global, visíveis a todos os tenants
+- **Sintoma:** item criado por outro tenant aparece na listagem de um terceiro tenant
+- **Diagnóstico:** `SELECT id, descricao FROM itens_verificacao WHERE conta_id IS NULL` — identifica quais estão sem tenant
+- **Fix:** `UPDATE itens_verificacao SET conta_id = 'UUID_DA_CONTA' WHERE id = 'UUID_DO_ITEM'` para cada item que não deveria ser global
+- **Regra:** itens do seed/catálogo original (UUIDs `e0000000-...`) são intencionalmente globais; itens criados por usuários de teste antes da migration precisam ser atribuídos manualmente
 
 ### GET /api/vistorias/:id — resposta diferente dos demais endpoints
 - **Todos** os endpoints retornam `{ ok: true, data: {...} }`, **exceto** `GET /api/vistorias/:id`
