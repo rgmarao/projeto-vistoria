@@ -1,6 +1,7 @@
 import express from 'express';
 import { supabase } from '../config/supabase.js';
 import { requireAuth } from '../middlewares/auth.js';
+import { blockSuperAdmin } from '../middlewares/tenant.js';
 
 const router = express.Router();
 
@@ -56,7 +57,7 @@ async function carregarPlanoCompleto(id) {
 // GET /api/planos-acao — Listar planos
 // Query: vistoria_id, unidade_id, responsavel_id, meus (true = minhas tarefas)
 // ─────────────────────────────────────────────────────────────────────────────
-router.get('/', requireAuth, async (req, res) => {
+router.get('/', requireAuth, blockSuperAdmin, async (req, res) => {
   try {
     const { vistoria_id, unidade_id, responsavel_id } = req.query;
 
@@ -105,7 +106,7 @@ router.get('/', requireAuth, async (req, res) => {
 // GET /api/planos-acao/tarefas/:tarefa_id — Detalhe de tarefa
 // (Rota literal ANTES de /:id para evitar conflito de parâmetro)
 // ─────────────────────────────────────────────────────────────────────────────
-router.get('/tarefas/:tarefa_id', requireAuth, async (req, res) => {
+router.get('/tarefas/:tarefa_id', requireAuth, blockSuperAdmin, async (req, res) => {
   try {
     const { tarefa_id } = req.params;
     const { data, error } = await supabase
@@ -123,7 +124,7 @@ router.get('/tarefas/:tarefa_id', requireAuth, async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // PUT /api/planos-acao/tarefas/:tarefa_id — Atualizar tarefa
 // ─────────────────────────────────────────────────────────────────────────────
-router.put('/tarefas/:tarefa_id', requireAuth, async (req, res) => {
+router.put('/tarefas/:tarefa_id', requireAuth, blockSuperAdmin, async (req, res) => {
   try {
     const { tarefa_id } = req.params;
     const { descricao, responsavel_id, prazo, status } = req.body;
@@ -150,7 +151,7 @@ router.put('/tarefas/:tarefa_id', requireAuth, async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // DELETE /api/planos-acao/tarefas/:tarefa_id — Excluir tarefa
 // ─────────────────────────────────────────────────────────────────────────────
-router.delete('/tarefas/:tarefa_id', requireAuth, async (req, res) => {
+router.delete('/tarefas/:tarefa_id', requireAuth, blockSuperAdmin, async (req, res) => {
   try {
     const { tarefa_id } = req.params;
     const { error } = await supabase.from('plano_acao_tarefas').delete().eq('id', tarefa_id);
@@ -165,7 +166,7 @@ router.delete('/tarefas/:tarefa_id', requireAuth, async (req, res) => {
 // PATCH /api/planos-acao/tarefas/:tarefa_id/aprovar — Aprovar tarefa
 // Apenas admin ou gestor
 // ─────────────────────────────────────────────────────────────────────────────
-router.patch('/tarefas/:tarefa_id/aprovar', requireAuth, async (req, res) => {
+router.patch('/tarefas/:tarefa_id/aprovar', requireAuth, blockSuperAdmin, async (req, res) => {
   try {
     const { tarefa_id } = req.params;
     const userId = req.user?.id;
@@ -208,7 +209,7 @@ router.patch('/tarefas/:tarefa_id/aprovar', requireAuth, async (req, res) => {
 // GET /api/planos-acao/minhas-tarefas — Tarefas do usuário logado
 // (Rota literal ANTES de /:id para evitar conflito de parâmetro)
 // ─────────────────────────────────────────────────────────────────────────────
-router.get('/minhas-tarefas', requireAuth, async (req, res) => {
+router.get('/minhas-tarefas', requireAuth, blockSuperAdmin, async (req, res) => {
   try {
     const userId = req.user?.id;
     const { data, error } = await supabase
@@ -238,7 +239,7 @@ router.get('/minhas-tarefas', requireAuth, async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/planos-acao/:id — Detalhe completo
 // ─────────────────────────────────────────────────────────────────────────────
-router.get('/:id', requireAuth, async (req, res) => {
+router.get('/:id', requireAuth, blockSuperAdmin, async (req, res) => {
   try {
     const plano = await carregarPlanoCompleto(req.params.id);
     if (!plano) return res.status(404).json({ ok: false, error: 'Plano não encontrado' });
@@ -252,7 +253,7 @@ router.get('/:id', requireAuth, async (req, res) => {
 // POST /api/planos-acao — Criar plano
 // Body: { vistoria_id, titulo?, observacoes?, itens: [{ ocorrencia_id?, descricao, tarefas: [...] }] }
 // ─────────────────────────────────────────────────────────────────────────────
-router.post('/', requireAuth, async (req, res) => {
+router.post('/', requireAuth, blockSuperAdmin, async (req, res) => {
   try {
     const { vistoria_id, titulo, observacoes, itens } = req.body;
     const userId = req.user?.id;
@@ -316,7 +317,7 @@ router.post('/', requireAuth, async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // PUT /api/planos-acao/:id — Atualizar cabeçalho do plano
 // ─────────────────────────────────────────────────────────────────────────────
-router.put('/:id', requireAuth, async (req, res) => {
+router.put('/:id', requireAuth, blockSuperAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { titulo, observacoes, status } = req.body;
@@ -338,7 +339,7 @@ router.put('/:id', requireAuth, async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/planos-acao/:id/itens — Adicionar item ao plano
 // ─────────────────────────────────────────────────────────────────────────────
-router.post('/:id/itens', requireAuth, async (req, res) => {
+router.post('/:id/itens', requireAuth, blockSuperAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { descricao, ocorrencia_id } = req.body;
@@ -360,7 +361,7 @@ router.post('/:id/itens', requireAuth, async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // DELETE /api/planos-acao/:id/itens/:item_id — Remover item
 // ─────────────────────────────────────────────────────────────────────────────
-router.delete('/:id/itens/:item_id', requireAuth, async (req, res) => {
+router.delete('/:id/itens/:item_id', requireAuth, blockSuperAdmin, async (req, res) => {
   try {
     const { item_id } = req.params;
     const { error } = await supabase.from('plano_acao_itens').delete().eq('id', item_id);
@@ -374,7 +375,7 @@ router.delete('/:id/itens/:item_id', requireAuth, async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/planos-acao/:id/itens/:item_id/tarefas — Adicionar tarefa ao item
 // ─────────────────────────────────────────────────────────────────────────────
-router.post('/:id/itens/:item_id/tarefas', requireAuth, async (req, res) => {
+router.post('/:id/itens/:item_id/tarefas', requireAuth, blockSuperAdmin, async (req, res) => {
   try {
     const { item_id } = req.params;
     const { descricao, responsavel_id, prazo } = req.body;

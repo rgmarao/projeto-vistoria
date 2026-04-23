@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { supabase } from '../config/supabase.js';
 import { requireAuth } from '../middlewares/auth.js';
+import { blockSuperAdmin } from '../middlewares/tenant.js';
 import { resolveSemaforos } from '../utils/semaforos.js';
 
 const router = express.Router();
@@ -323,7 +324,7 @@ function renderFicha(doc, fields) {
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/vistorias/:id/pdf — Relatório Completo
 // ─────────────────────────────────────────────────────────────────────────────
-router.get('/vistorias/:id/pdf', requireAuth, async (req, res) => {
+router.get('/vistorias/:id/pdf', requireAuth, blockSuperAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -417,7 +418,7 @@ router.get('/vistorias/:id/pdf', requireAuth, async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/vistorias/:id/pdf/pendencias — Relatório de Pendências
 // ─────────────────────────────────────────────────────────────────────────────
-router.get('/vistorias/:id/pdf/pendencias', requireAuth, async (req, res) => {
+router.get('/vistorias/:id/pdf/pendencias', requireAuth, blockSuperAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 

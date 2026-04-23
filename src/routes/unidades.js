@@ -1,6 +1,7 @@
 import express from 'express';
 import multer from 'multer';
 import { requireAuth } from '../middlewares/auth.js';
+import { blockSuperAdmin } from '../middlewares/tenant.js';
 import { supabase } from '../config/supabase.js';
 import { resolveSemaforos } from '../utils/semaforos.js';
 
@@ -43,16 +44,14 @@ async function pertenceAoConta(unidadeId, contaId) {
 }
 
 // GET /api/unidades
-router.get('/', requireAuth, async (req, res) => {
+router.get('/', requireAuth, blockSuperAdmin, async (req, res) => {
     try {
         const { empresa_id, ativo } = req.query;
         let query = supabase.from('unidades').select('*, empresas(id, nome)').order('nome');
 
-        if (req.userPerfil !== 'super_admin') {
-            const ids = await empIdsDoTenant(req.contaId);
-            if (ids.length === 0) return res.json({ ok: true, data: [] });
-            query = query.in('empresa_id', ids);
-        }
+        const ids = await empIdsDoTenant(req.contaId);
+        if (ids.length === 0) return res.json({ ok: true, data: [] });
+        query = query.in('empresa_id', ids);
 
         if (empresa_id) query = query.eq('empresa_id', empresa_id);
         if (ativo !== undefined) query = query.eq('ativo', ativo === 'true');
@@ -65,11 +64,11 @@ router.get('/', requireAuth, async (req, res) => {
 });
 
 // GET /api/unidades/:id
-router.get('/:id', requireAuth, async (req, res) => {
+router.get('/:id', requireAuth, blockSuperAdmin, async (req, res) => {
     try {
         const { id } = req.params;
 
-        if (req.userPerfil !== 'super_admin' && !(await pertenceAoConta(id, req.contaId))) {
+        if (!(await pertenceAoConta(id, req.contaId))) {
             return res.status(404).json({ ok: false, error: 'Unidade não encontrada' });
         }
 
@@ -87,7 +86,7 @@ router.get('/:id', requireAuth, async (req, res) => {
 });
 
 // GET /api/unidades/:id/semaforos
-router.get('/:id/semaforos', requireAuth, async (req, res) => {
+router.get('/:id/semaforos', requireAuth, blockSuperAdmin, async (req, res) => {
     try {
         const { id } = req.params;
         const { data, error } = await supabase
@@ -107,18 +106,16 @@ router.get('/:id/semaforos', requireAuth, async (req, res) => {
 });
 
 // POST /api/unidades
-router.post('/', requireAuth, upload.single('logo'), async (req, res) => {
+router.post('/', requireAuth, blockSuperAdmin, upload.single('logo'), async (req, res) => {
     try {
         const { nome, empresa_id, endereco } = req.body;
         if (!nome)       return res.status(400).json({ ok: false, error: 'Campo "nome" é obrigatório' });
         if (!empresa_id) return res.status(400).json({ ok: false, error: 'Campo "empresa_id" é obrigatório' });
 
         // Garante que a empresa pertence ao tenant do usuário
-        if (req.userPerfil !== 'super_admin') {
-            const ids = await empIdsDoTenant(req.contaId);
-            if (!ids.includes(empresa_id)) {
-                return res.status(403).json({ ok: false, error: 'Empresa não pertence à sua conta' });
-            }
+        const ids = await empIdsDoTenant(req.contaId);
+        if (!ids.includes(empresa_id)) {
+            return res.status(403).json({ ok: false, error: 'Empresa não pertence à sua conta' });
         }
 
         let configuracao_semaforos = null;
@@ -152,11 +149,11 @@ router.post('/', requireAuth, upload.single('logo'), async (req, res) => {
 });
 
 // PUT /api/unidades/:id
-router.put('/:id', requireAuth, upload.single('logo'), async (req, res) => {
+router.put('/:id', requireAuth, blockSuperAdmin, upload.single('logo'), async (req, res) => {
     try {
         const { id } = req.params;
 
-        if (req.userPerfil !== 'super_admin' && !(await pertenceAoConta(id, req.contaId))) {
+        if (!(await pertenceAoConta(id, req.contaId))) {
             return res.status(404).json({ ok: false, error: 'Unidade não encontrada' });
         }
 
@@ -195,10 +192,10 @@ router.put('/:id', requireAuth, upload.single('logo'), async (req, res) => {
 });
 
 // PATCH /api/unidades/:id/desativar
-router.patch('/:id/desativar', requireAuth, async (req, res) => {
+router.patch('/:id/desativar', requireAuth, blockSuperAdmin, async (req, res) => {
     try {
         const { id } = req.params;
-        if (req.userPerfil !== 'super_admin' && !(await pertenceAoConta(id, req.contaId))) {
+        if (!(await pertenceAoConta(id, req.contaId))) {
             return res.status(404).json({ ok: false, error: 'Unidade não encontrada' });
         }
         const { data, error } = await supabase.from('unidades')
@@ -212,10 +209,10 @@ router.patch('/:id/desativar', requireAuth, async (req, res) => {
 });
 
 // PATCH /api/unidades/:id/ativar
-router.patch('/:id/ativar', requireAuth, async (req, res) => {
+router.patch('/:id/ativar', requireAuth, blockSuperAdmin, async (req, res) => {
     try {
         const { id } = req.params;
-        if (req.userPerfil !== 'super_admin' && !(await pertenceAoConta(id, req.contaId))) {
+        if (!(await pertenceAoConta(id, req.contaId))) {
             return res.status(404).json({ ok: false, error: 'Unidade não encontrada' });
         }
         const { data, error } = await supabase.from('unidades')
@@ -229,10 +226,10 @@ router.patch('/:id/ativar', requireAuth, async (req, res) => {
 });
 
 // DELETE /api/unidades/:id/logo
-router.delete('/:id/logo', requireAuth, async (req, res) => {
+router.delete('/:id/logo', requireAuth, blockSuperAdmin, async (req, res) => {
     try {
         const { id } = req.params;
-        if (req.userPerfil !== 'super_admin' && !(await pertenceAoConta(id, req.contaId))) {
+        if (!(await pertenceAoConta(id, req.contaId))) {
             return res.status(404).json({ ok: false, error: 'Unidade não encontrada' });
         }
         const { data: unidade, error: erroGet } = await supabase.from('unidades').select('id, logo_url').eq('id', id).single();

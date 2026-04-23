@@ -172,6 +172,40 @@ router.patch('/:id/desativar', requireAuth, requireSuperAdmin, async (req, res) 
 });
 
 // ─────────────────────────────────────────
+// DELETE /api/contas/:id — Excluir conta (super_admin)
+// Bloqueado se a conta tiver empresas ou perfis associados
+// ─────────────────────────────────────────
+router.delete('/:id', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Protege a Conta Padrão (migração legado)
+    if (id === '00000000-0000-0000-0000-000000000001') {
+      return res.status(403).json({ ok: false, error: 'A Conta Padrão não pode ser excluída' });
+    }
+
+    const [{ count: countEmpresas }, { count: countPerfis }] = await Promise.all([
+      supabase.from('empresas').select('id', { count: 'exact', head: true }).eq('conta_id', id),
+      supabase.from('perfis').select('id', { count: 'exact', head: true }).eq('conta_id', id)
+    ]);
+
+    if (countEmpresas > 0 || countPerfis > 0) {
+      return res.status(400).json({
+        ok: false,
+        error: `Esta conta possui dados associados (${countEmpresas} empresa(s), ${countPerfis} usuário(s)). Remova os dados antes de excluir a conta.`
+      });
+    }
+
+    const { error } = await supabase.from('contas').delete().eq('id', id);
+    if (error) throw error;
+
+    res.json({ ok: true, message: 'Conta removida com sucesso' });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ─────────────────────────────────────────
 // POST /api/contas/registro — Auto-cadastro (público)
 // Cria conta + usuário admin em um único fluxo
 // ─────────────────────────────────────────

@@ -1,6 +1,7 @@
 import express from 'express';
 import multer from 'multer';
 import { requireAuth } from '../middlewares/auth.js';
+import { blockSuperAdmin } from '../middlewares/tenant.js';
 import { supabase } from '../config/supabase.js';
 
 const router = express.Router();
@@ -23,7 +24,7 @@ const upload = multer({
 // POST /api/ocorrencias/:id/fotos
 // Campo do form: "foto" (arquivo) + "slot" (1 ou 2)
 // ─────────────────────────────────────────────
-router.post('/ocorrencias/:id/fotos', requireAuth, upload.single('foto'), async (req, res) => {
+router.post('/ocorrencias/:id/fotos', requireAuth, blockSuperAdmin, upload.single('foto'), async (req, res) => {
     try {
         const { id } = req.params;
         const slot = parseInt(req.body.slot); // 1 ou 2
@@ -103,7 +104,7 @@ router.post('/ocorrencias/:id/fotos', requireAuth, upload.single('foto'), async 
 // ─────────────────────────────────────────────
 // DELETE /api/ocorrencias/:id/fotos/:slot
 // ─────────────────────────────────────────────
-router.delete('/ocorrencias/:id/fotos/:slot', requireAuth, async (req, res) => {
+router.delete('/ocorrencias/:id/fotos/:slot', requireAuth, blockSuperAdmin, async (req, res) => {
     try {
         const { id } = req.params;
         const slot = parseInt(req.params.slot);
@@ -164,7 +165,7 @@ router.delete('/ocorrencias/:id/fotos/:slot', requireAuth, async (req, res) => {
 // GET /api/ocorrencias/:id/fotos
 // Retorna URLs assinadas das fotos
 // ─────────────────────────────────────────────
-router.get('/ocorrencias/:id/fotos', requireAuth, async (req, res) => {
+router.get('/ocorrencias/:id/fotos', requireAuth, blockSuperAdmin, async (req, res) => {
     try {
         const { id } = req.params;
 

@@ -1,5 +1,6 @@
 import express from 'express';
 import { requireAuth } from '../middlewares/auth.js';
+import { blockSuperAdmin } from '../middlewares/tenant.js';
 import { supabase } from '../config/supabase.js';
 import { resolveSemaforos } from '../utils/semaforos.js';
 
@@ -10,7 +11,7 @@ const router = express.Router();
 // Lista áreas de uma unidade (incluindo inativas para o admin)
 // ?incluir_inativas=true
 // ─────────────────────────────────────────
-router.get('/unidades/:id/areas', requireAuth, async (req, res) => {
+router.get('/unidades/:id/areas', requireAuth, blockSuperAdmin, async (req, res) => {
   const { id } = req.params;
   const { incluir_inativas } = req.query;
 
@@ -32,7 +33,7 @@ router.get('/unidades/:id/areas', requireAuth, async (req, res) => {
 // Cria uma nova área para uma unidade
 // body: { nome, ordem? }
 // ─────────────────────────────────────────
-router.post('/unidades/:id/areas', requireAuth, async (req, res) => {
+router.post('/unidades/:id/areas', requireAuth, blockSuperAdmin, async (req, res) => {
   const { id } = req.params;
   const { nome, ordem } = req.body;
 
@@ -62,7 +63,7 @@ router.post('/unidades/:id/areas', requireAuth, async (req, res) => {
 // PUT /api/areas/:id
 // Edita nome e/ou ordem de uma área
 // ─────────────────────────────────────────
-router.put('/areas/:id', requireAuth, async (req, res) => {
+router.put('/areas/:id', requireAuth, blockSuperAdmin, async (req, res) => {
   const { id } = req.params;
   const { nome, ordem } = req.body;
 
@@ -86,7 +87,7 @@ router.put('/areas/:id', requireAuth, async (req, res) => {
 // PATCH /api/areas/:id/ativar
 // PATCH /api/areas/:id/desativar
 // ─────────────────────────────────────────
-router.patch('/areas/:id/ativar', requireAuth, async (req, res) => {
+router.patch('/areas/:id/ativar', requireAuth, blockSuperAdmin, async (req, res) => {
   const { data, error } = await supabase
     .from('areas').update({ ativo: true }).eq('id', req.params.id).select().single();
   if (error) return res.status(400).json({ ok: false, error: error.message });
@@ -94,7 +95,7 @@ router.patch('/areas/:id/ativar', requireAuth, async (req, res) => {
   res.json({ ok: true, data });
 });
 
-router.patch('/areas/:id/desativar', requireAuth, async (req, res) => {
+router.patch('/areas/:id/desativar', requireAuth, blockSuperAdmin, async (req, res) => {
   const { data, error } = await supabase
     .from('areas').update({ ativo: false }).eq('id', req.params.id).select().single();
   if (error) return res.status(400).json({ ok: false, error: error.message });
@@ -106,7 +107,7 @@ router.patch('/areas/:id/desativar', requireAuth, async (req, res) => {
 // DELETE /api/areas/:id
 // Remove área (só se não tiver itens associados)
 // ─────────────────────────────────────────
-router.delete('/areas/:id', requireAuth, async (req, res) => {
+router.delete('/areas/:id', requireAuth, blockSuperAdmin, async (req, res) => {
   const { id } = req.params;
 
   const { count } = await supabase
@@ -129,7 +130,7 @@ router.delete('/areas/:id', requireAuth, async (req, res) => {
 // Atualiza a ordem das áreas em batch
 // body: { ordens: [{ id, ordem }] }
 // ─────────────────────────────────────────
-router.patch('/unidades/:id/areas/reordenar', requireAuth, async (req, res) => {
+router.patch('/unidades/:id/areas/reordenar', requireAuth, blockSuperAdmin, async (req, res) => {
   const { id } = req.params;
   const { ordens } = req.body;
 
@@ -153,7 +154,7 @@ router.patch('/unidades/:id/areas/reordenar', requireAuth, async (req, res) => {
 // Atualiza a ordem dos itens de uma área em batch
 // body: { ordens: [{ id (area_item_id), ordem }] }
 // ─────────────────────────────────────────
-router.patch('/areas/:id/itens/reordenar', requireAuth, async (req, res) => {
+router.patch('/areas/:id/itens/reordenar', requireAuth, blockSuperAdmin, async (req, res) => {
   const { id } = req.params;
   const { ordens } = req.body;
 
@@ -176,7 +177,7 @@ router.patch('/areas/:id/itens/reordenar', requireAuth, async (req, res) => {
 // GET /api/areas/:id/itens
 // Lista itens associados a uma área
 // ─────────────────────────────────────────
-router.get('/areas/:id/itens', requireAuth, async (req, res) => {
+router.get('/areas/:id/itens', requireAuth, blockSuperAdmin, async (req, res) => {
   const { id } = req.params;
 
   const { data, error } = await supabase
@@ -205,7 +206,7 @@ router.get('/areas/:id/itens', requireAuth, async (req, res) => {
 // Associa um item a uma área
 // body: { item_id, ordem? }
 // ─────────────────────────────────────────
-router.post('/areas/:id/itens', requireAuth, async (req, res) => {
+router.post('/areas/:id/itens', requireAuth, blockSuperAdmin, async (req, res) => {
   const { id } = req.params;
   const { item_id, ordem } = req.body;
 
@@ -241,7 +242,7 @@ router.post('/areas/:id/itens', requireAuth, async (req, res) => {
 // DELETE /api/area-itens/:id
 // Remove a associação item↔área
 // ─────────────────────────────────────────
-router.delete('/area-itens/:id', requireAuth, async (req, res) => {
+router.delete('/area-itens/:id', requireAuth, blockSuperAdmin, async (req, res) => {
   const { error } = await supabase.from('area_itens').delete().eq('id', req.params.id);
   if (error) return res.status(400).json({ ok: false, error: error.message });
   res.json({ ok: true, message: 'Item removido da área' });
@@ -252,7 +253,7 @@ router.delete('/area-itens/:id', requireAuth, async (req, res) => {
 // Salva snapshot da estrutura atual como nova versão
 // Perfil: admin
 // ─────────────────────────────────────────
-router.post('/unidades/:id/estrutura/publicar', requireAuth, async (req, res) => {
+router.post('/unidades/:id/estrutura/publicar', requireAuth, blockSuperAdmin, async (req, res) => {
   const { id } = req.params;
 
   const { data: perfil } = await supabase
@@ -305,7 +306,7 @@ router.post('/unidades/:id/estrutura/publicar', requireAuth, async (req, res) =>
 // GET /api/unidades/:id/estrutura/versoes/ultima
 // Retorna metadados da última versão publicada
 // ─────────────────────────────────────────
-router.get('/unidades/:id/estrutura/versoes/ultima', requireAuth, async (req, res) => {
+router.get('/unidades/:id/estrutura/versoes/ultima', requireAuth, blockSuperAdmin, async (req, res) => {
   const { id } = req.params;
 
   const { data } = await supabase
@@ -324,7 +325,7 @@ router.get('/unidades/:id/estrutura/versoes/ultima', requireAuth, async (req, re
 // Estrutura completa (áreas + itens agrupados) — usada pelo app
 // Inclui `semaforos` (configuração efetiva herdada empresa → unidade)
 // ─────────────────────────────────────────
-router.get('/unidades/:id/checklist', requireAuth, async (req, res) => {
+router.get('/unidades/:id/checklist', requireAuth, blockSuperAdmin, async (req, res) => {
   const { id } = req.params;
 
   const [areasResult, unidadeResult] = await Promise.all([

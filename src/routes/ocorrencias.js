@@ -1,13 +1,14 @@
 import express from 'express';
 import { supabase } from '../config/supabase.js';
 import { requireAuth } from '../middlewares/auth.js';
+import { blockSuperAdmin } from '../middlewares/tenant.js';
 
 const router = express.Router();
 
 // ─────────────────────────────────────────────
 // POST /api/vistorias/:id/ocorrencias
 // ─────────────────────────────────────────────
-router.post('/vistorias/:id/ocorrencias', requireAuth, async (req, res) => {
+router.post('/vistorias/:id/ocorrencias', requireAuth, blockSuperAdmin, async (req, res) => {
   try {
     const { id: vistoria_id } = req.params;
     const {
@@ -92,7 +93,7 @@ router.post('/vistorias/:id/ocorrencias', requireAuth, async (req, res) => {
 // PUT /api/ocorrencias/:id
 // Editar ocorrência
 // ─────────────────────────────────────────────
-router.put('/ocorrencias/:id', requireAuth, async (req, res) => {
+router.put('/ocorrencias/:id', requireAuth, blockSuperAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { descricao, status, recomendacao } = req.body;
@@ -151,7 +152,7 @@ router.put('/ocorrencias/:id', requireAuth, async (req, res) => {
 // DELETE /api/ocorrencias/:id
 // Remover ocorrência
 // ─────────────────────────────────────────────
-router.delete('/ocorrencias/:id', requireAuth, async (req, res) => {
+router.delete('/ocorrencias/:id', requireAuth, blockSuperAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 

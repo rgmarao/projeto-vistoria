@@ -1,16 +1,37 @@
 import express from 'express';
 import { supabase } from '../config/supabase.js';
 import { requireAuth } from '../middlewares/auth.js';
+import { blockSuperAdmin } from '../middlewares/tenant.js';
 import { resolveSemaforos } from '../utils/semaforos.js';
 
 const router = express.Router();
 
+// Retorna IDs de todas as unidades pertencentes ao tenant
+async function unidadeIdsDoTenant(contaId) {
+  const { data: empresas } = await supabase.from('empresas').select('id').eq('conta_id', contaId);
+  const empIds = (empresas || []).map(e => e.id);
+  if (!empIds.length) return [];
+  const { data: unidades } = await supabase.from('unidades').select('id').in('empresa_id', empIds);
+  return (unidades || []).map(u => u.id);
+}
+
+// Verifica se uma vistoria pertence ao tenant (via unidade→empresa→conta)
+async function vistoriaPertenceAoTenant(vistoriaId, contaId) {
+  const { data: vis } = await supabase.from('vistorias').select('unidade_id').eq('id', vistoriaId).single();
+  if (!vis) return false;
+  const { data: check } = await supabase
+    .from('unidades')
+    .select('id, empresas!inner(conta_id)')
+    .eq('id', vis.unidade_id)
+    .eq('empresas.conta_id', contaId)
+    .single();
+  return !!check;
+}
+
 // ─────────────────────────────────────────
 // POST /api/vistorias
-// Cria uma nova vistoria
-// Perfil: admin | analista
 // ─────────────────────────────────────────
-router.post('/', requireAuth, async (req, res) => {
+router.post('/', requireAuth, blockSuperAdmin, async (req, res) => {
   try {
     const { unidade_id } = req.body;
 
@@ -18,21 +39,16 @@ router.post('/', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'unidade_id é obrigatório' });
     }
 
-    const { data: perfil, error: perfilError } = await supabase
-      .from('perfis')
-      .select('perfil')
-      .eq('id', req.user.id)
-      .single();
-
-    if (perfilError || !perfil) {
-      return res.status(403).json({ error: 'Perfil de usuário não encontrado' });
-    }
-
-    if (!['admin', 'analista'].includes(perfil.perfil)) {
+    if (!['admin', 'analista'].includes(req.userPerfil)) {
       return res.status(403).json({ error: 'Sem permissão para criar vistorias' });
     }
 
-    // Vincula à última versão de estrutura publicada (se existir)
+    // Verifica que a unidade pertence ao tenant do usuário
+    const unidadeIds = await unidadeIdsDoTenant(req.contaId);
+    if (!unidadeIds.includes(unidade_id)) {
+      return res.status(403).json({ error: 'Unidade não pertence à sua conta' });
+    }
+
     const { data: ultimaVersao } = await supabase
       .from('estrutura_versoes')
       .select('id')
@@ -70,24 +86,11 @@ router.post('/', requireAuth, async (req, res) => {
 
 // ─────────────────────────────────────────
 // GET /api/vistorias
-// Lista vistorias com filtros opcionais
-// ?status=em_andamento|finalizada|publicada
-// ?unidade_id=uuid
-// Perfil: admin vê tudo | analista vê suas unidades | usuario só publicadas
 // ─────────────────────────────────────────
-router.get('/', requireAuth, async (req, res) => {
+router.get('/', requireAuth, blockSuperAdmin, async (req, res) => {
   try {
     const { status, unidade_id } = req.query;
-
-    const { data: perfil, error: perfilError } = await supabase
-      .from('perfis')
-      .select('perfil')
-      .eq('id', req.user.id)
-      .single();
-
-    if (perfilError || !perfil) {
-      return res.status(403).json({ error: 'Perfil de usuário não encontrado' });
-    }
+    const perfilAtual = req.userPerfil;
 
     let query = supabase
       .from('vistorias')
@@ -98,20 +101,22 @@ router.get('/', requireAuth, async (req, res) => {
       `)
       .order('data_criacao', { ascending: false });
 
-    if (perfil.perfil === 'usuario') {
+    if (perfilAtual === 'usuario') {
       const { data: vinculos } = await supabase
         .from('usuario_unidades')
         .select('unidade_id')
         .eq('usuario_id', req.user.id);
 
       const unidadeIds = vinculos?.map(v => v.unidade_id) || [];
-
-      query = query
-        .in('unidade_id', unidadeIds)
-        .eq('status', 'publicada');
+      query = query.in('unidade_id', unidadeIds).eq('status', 'publicada');
+    } else {
+      // admin, analista, gestor: apenas vistorias do próprio tenant
+      const unidadeIds = await unidadeIdsDoTenant(req.contaId);
+      if (!unidadeIds.length) return res.json({ ok: true, data: [] });
+      query = query.in('unidade_id', unidadeIds);
     }
 
-    if (status && perfil.perfil !== 'usuario') {
+    if (status && perfilAtual !== 'usuario') {
       query = query.eq('status', status);
     }
 
@@ -135,14 +140,16 @@ router.get('/', requireAuth, async (req, res) => {
 
 // ─────────────────────────────────────────
 // GET /api/vistorias/:id/checklist
-// Retorna vistoria + estrutura completa (áreas → itens → ocorrências)
-// Usado pela view web para preenchimento/visualização
 // ─────────────────────────────────────────
-router.get('/:id/checklist', requireAuth, async (req, res) => {
+router.get('/:id/checklist', requireAuth, blockSuperAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 
-    // 1. Busca vistoria com unidade (inclui configuração de semáforos)
+    // Verifica acesso ao tenant
+    if (!(await vistoriaPertenceAoTenant(id, req.contaId))) {
+      return res.status(404).json({ error: 'Vistoria não encontrada' });
+    }
+
     const { data: vis, error: errVis } = await supabase
       .from('vistorias')
       .select('*, unidades(id, nome, endereco, configuracao_semaforos, empresas(id, nome, configuracao_semaforos))')
@@ -151,7 +158,6 @@ router.get('/:id/checklist', requireAuth, async (req, res) => {
 
     if (errVis || !vis) return res.status(404).json({ error: 'Vistoria não encontrada' });
 
-    // 2. Busca estrutura — usa snapshot vinculado à vistoria se disponível
     let areasList;
 
     if (vis.estrutura_versao_id) {
@@ -184,7 +190,6 @@ router.get('/:id/checklist', requireAuth, async (req, res) => {
       }));
     }
 
-    // 3. Busca ocorrências da vistoria com URLs assinadas
     const { data: ocorrencias, error: errOcs } = await supabase
       .from('ocorrencias')
       .select('*')
@@ -193,7 +198,6 @@ router.get('/:id/checklist', requireAuth, async (req, res) => {
 
     if (errOcs) throw errOcs;
 
-    // 4. Assina URLs das fotos
     const ocsComFotos = await Promise.all((ocorrencias || []).map(async oc => {
       let foto_1_signed = null, foto_2_signed = null;
       if (oc.foto_1_url) {
@@ -207,7 +211,6 @@ router.get('/:id/checklist', requireAuth, async (req, res) => {
       return { ...oc, foto_1_signed, foto_2_signed };
     }));
 
-    // 5. Indexa ocorrências por item_id para lookup rápido
     const ocsPorItem = {};
     for (const oc of ocsComFotos) {
       const key = `${oc.area_id}_${oc.item_id}`;
@@ -215,7 +218,6 @@ router.get('/:id/checklist', requireAuth, async (req, res) => {
       ocsPorItem[key].push(oc);
     }
 
-    // 6. Monta estrutura areas → itens → ocorrências
     const estrutura = areasList.map(area => ({
       area_id:   area.area_id,
       area_nome: area.area_nome,
@@ -255,22 +257,11 @@ router.get('/:id/checklist', requireAuth, async (req, res) => {
 
 // ─────────────────────────────────────────
 // GET /api/vistorias/:id
-// Retorna detalhe completo de uma vistoria
-// Inclui URLs assinadas das fotos das ocorrências
 // ─────────────────────────────────────────
-router.get('/:id', requireAuth, async (req, res) => {
+router.get('/:id', requireAuth, blockSuperAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-
-    const { data: perfil, error: perfilError } = await supabase
-      .from('perfis')
-      .select('perfil')
-      .eq('id', req.user.id)
-      .single();
-
-    if (perfilError || !perfil) {
-      return res.status(403).json({ error: 'Perfil de usuário não encontrado' });
-    }
+    const perfilAtual = req.userPerfil;
 
     const { data, error } = await supabase
       .from('vistorias')
@@ -301,35 +292,45 @@ router.get('/:id', requireAuth, async (req, res) => {
       return res.status(404).json({ error: 'Vistoria não encontrada' });
     }
 
-    if (perfil.perfil === 'usuario' && data.status !== 'publicada') {
-      return res.status(403).json({ error: 'Acesso negado' });
+    // Verificação de acesso ao tenant (via unidade → empresa → conta)
+    if (perfilAtual === 'usuario') {
+      if (data.status !== 'publicada') {
+        return res.status(403).json({ error: 'Acesso negado' });
+      }
+      const { data: vinculo } = await supabase
+        .from('usuario_unidades')
+        .select('id')
+        .eq('usuario_id', req.user.id)
+        .eq('unidade_id', data.unidade_id)
+        .single();
+      if (!vinculo) return res.status(404).json({ error: 'Vistoria não encontrada' });
+    } else {
+      // admin, analista, gestor: verifica se unidade pertence ao tenant
+      const { data: tenantCheck } = await supabase
+        .from('unidades')
+        .select('id, empresas!inner(conta_id)')
+        .eq('id', data.unidade_id)
+        .eq('empresas.conta_id', req.contaId)
+        .single();
+      if (!tenantCheck) return res.status(404).json({ error: 'Vistoria não encontrada' });
     }
 
-    // ✅ Gera URLs assinadas para fotos de cada ocorrência
     const ocorrenciasComFotos = await Promise.all(
       (data.ocorrencias || []).map(async (oc) => {
         let foto_1_signed = null;
         let foto_2_signed = null;
 
         if (oc.foto_1_url) {
-          const { data: s1 } = await supabase.storage
-            .from('fotos')
-            .createSignedUrl(oc.foto_1_url, 3600);
+          const { data: s1 } = await supabase.storage.from('fotos').createSignedUrl(oc.foto_1_url, 3600);
           foto_1_signed = s1?.signedUrl || null;
         }
 
         if (oc.foto_2_url) {
-          const { data: s2 } = await supabase.storage
-            .from('fotos')
-            .createSignedUrl(oc.foto_2_url, 3600);
+          const { data: s2 } = await supabase.storage.from('fotos').createSignedUrl(oc.foto_2_url, 3600);
           foto_2_signed = s2?.signedUrl || null;
         }
 
-        return {
-          ...oc,
-          foto_1_signed, // ✅ URL assinada pronta para exibir
-          foto_2_signed,
-        };
+        return { ...oc, foto_1_signed, foto_2_signed };
       })
     );
 
@@ -348,28 +349,20 @@ router.get('/:id', requireAuth, async (req, res) => {
 
 // ─────────────────────────────────────────
 // PATCH /api/vistorias/:id/finalizar
-// Muda status para "finalizada"
-// Perfil: admin | analista
 // ─────────────────────────────────────────
-router.patch('/:id/finalizar', requireAuth, async (req, res) => {
+router.patch('/:id/finalizar', requireAuth, blockSuperAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 
-    const { data: perfil, error: perfilError } = await supabase
-      .from('perfis')
-      .select('perfil')
-      .eq('id', req.user.id)
-      .single();
-
-    if (perfilError || !['admin', 'analista'].includes(perfil?.perfil)) {
+    if (!['admin', 'analista'].includes(req.userPerfil)) {
       return res.status(403).json({ error: 'Sem permissão para finalizar vistorias' });
     }
 
-    const { data: vistoria } = await supabase
-      .from('vistorias')
-      .select('status')
-      .eq('id', id)
-      .single();
+    if (!(await vistoriaPertenceAoTenant(id, req.contaId))) {
+      return res.status(404).json({ error: 'Vistoria não encontrada' });
+    }
+
+    const { data: vistoria } = await supabase.from('vistorias').select('status').eq('id', id).single();
 
     if (!vistoria) {
       return res.status(404).json({ error: 'Vistoria não encontrada' });
@@ -407,28 +400,20 @@ router.patch('/:id/finalizar', requireAuth, async (req, res) => {
 
 // ─────────────────────────────────────────
 // PATCH /api/vistorias/:id/publicar
-// Muda status para "publicada"
-// Perfil: admin | analista
 // ─────────────────────────────────────────
-router.patch('/:id/publicar', requireAuth, async (req, res) => {
+router.patch('/:id/publicar', requireAuth, blockSuperAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 
-    const { data: perfil, error: perfilError } = await supabase
-      .from('perfis')
-      .select('perfil')
-      .eq('id', req.user.id)
-      .single();
-
-    if (perfilError || !['admin', 'analista'].includes(perfil?.perfil)) {
+    if (!['admin', 'analista'].includes(req.userPerfil)) {
       return res.status(403).json({ error: 'Sem permissão para publicar vistorias' });
     }
 
-    const { data: vistoria } = await supabase
-      .from('vistorias')
-      .select('status')
-      .eq('id', id)
-      .single();
+    if (!(await vistoriaPertenceAoTenant(id, req.contaId))) {
+      return res.status(404).json({ error: 'Vistoria não encontrada' });
+    }
+
+    const { data: vistoria } = await supabase.from('vistorias').select('status').eq('id', id).single();
 
     if (!vistoria) {
       return res.status(404).json({ error: 'Vistoria não encontrada' });
@@ -464,29 +449,22 @@ router.patch('/:id/publicar', requireAuth, async (req, res) => {
   }
 });
 
-// PATCH /api/vistorias/:id/reabrir
-// Muda status de "finalizada" para "em_andamento"
-// Perfil: admin | analista
 // ─────────────────────────────────────────
-router.patch('/:id/reabrir', requireAuth, async (req, res) => {
+// PATCH /api/vistorias/:id/reabrir
+// ─────────────────────────────────────────
+router.patch('/:id/reabrir', requireAuth, blockSuperAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 
-    const { data: perfil, error: perfilError } = await supabase
-      .from('perfis')
-      .select('perfil')
-      .eq('id', req.user.id)
-      .single();
-
-    if (perfilError || !['admin', 'analista'].includes(perfil?.perfil)) {
+    if (!['admin', 'analista'].includes(req.userPerfil)) {
       return res.status(403).json({ error: 'Sem permissão para reabrir vistorias' });
     }
 
-    const { data: vistoria } = await supabase
-      .from('vistorias')
-      .select('status')
-      .eq('id', id)
-      .single();
+    if (!(await vistoriaPertenceAoTenant(id, req.contaId))) {
+      return res.status(404).json({ error: 'Vistoria não encontrada' });
+    }
+
+    const { data: vistoria } = await supabase.from('vistorias').select('status').eq('id', id).single();
 
     if (!vistoria) {
       return res.status(404).json({ error: 'Vistoria não encontrada' });

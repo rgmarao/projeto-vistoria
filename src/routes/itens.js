@@ -28,7 +28,10 @@ router.get('/', requireAuth, async (req, res) => {
       .select('id, descricao, ativo, grupo_id, conta_id, grupos_verificacao(id, nome), criado_em')
       .order('descricao');
 
-    if (req.userPerfil !== 'super_admin') {
+    if (req.userPerfil === 'super_admin') {
+      // super_admin só vê itens globais (catálogo da plataforma)
+      query = query.is('conta_id', null);
+    } else {
       // Globais (NULL) + próprios da conta
       query = query.or(`conta_id.is.null,conta_id.eq.${req.contaId}`);
     }
