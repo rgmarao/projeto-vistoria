@@ -386,6 +386,7 @@ git push origin main
 | PUT | `/api/contas/:id` | ✅ | super_admin | Edita nome/plano | ✅ |
 | PATCH | `/api/contas/:id/ativar` | ✅ | super_admin | Ativa conta | ✅ |
 | PATCH | `/api/contas/:id/desativar` | ✅ | super_admin | Desativa conta | ✅ |
+| DELETE | `/api/contas/:id` | ✅ | super_admin | Exclui conta (bloqueia se tiver dados) | ✅ |
 
 ### Auth (`/api/auth`)
 | Método | Rota | Auth | Perfil | Descrição | Status |
@@ -573,11 +574,15 @@ app.use('/api', relatoriosRoutes);
 
 ### Multi-tenant — como funciona
 - `requireAuth` (middleware) busca o perfil no banco e injeta `req.userPerfil` e `req.contaId` em **toda** requisição autenticada
-- `super_admin` tem `req.contaId = null` — bypass automático de todos os filtros de tenant
-- Rotas de `empresas` e `perfis`: filtro `.eq('conta_id', req.contaId)` para não-super_admin
+- `super_admin` tem `req.contaId = null`; **NÃO tem acesso a dados de tenants** (empresas, unidades, vistorias, etc.)
+- Middleware `blockSuperAdmin` (tenant.js) retorna 403 em todas as rotas de dados de tenants
+- Rotas de `empresas` e `perfis`: filtro `.eq('conta_id', req.contaId)` sempre aplicado
 - Rotas de `unidades`: isolamento via `empresa_id IN (empresas da conta)` + helper `pertenceAoConta()`
-- Itens/grupos: filtro `.or('conta_id.is.null,conta_id.eq.UUID')` — globais + próprios
+- Rotas de `vistorias`: isolamento via `unidade_id IN (unidades do tenant)` + helper `vistoriaPertenceAoTenant()`
+- Itens/grupos para tenant: filtro `.or('conta_id.is.null,conta_id.eq.UUID')` — globais + próprios
+- Itens/grupos para super_admin: filtro `.is('conta_id', null)` — apenas globais (catálogo da plataforma)
 - Em operações de escrita (POST): `conta_id` é injetado automaticamente do `req.contaId`
+- super_admin pode apenas: gerenciar contas (`/api/contas`), criar/editar itens e grupos globais (`/api/itens`, `/api/grupos`)
 
 ### Autenticação no frontend
 - Token: `localStorage.getItem('token')`
@@ -609,13 +614,15 @@ app.use('/api', relatoriosRoutes);
 - **Melhoria 5 — Fundação SaaS / Multi-tenant:** ✅ **CONCLUÍDA**
   - Tabela `contas` (slug único, planos, ativo/inativo) + trigger `atualizado_em`
   - FK `conta_id` (nullable) em `empresas`, `perfis`, `itens_verificacao`, `grupos_verificacao`
-  - Perfil `super_admin` cross-tenant; `gestor` adicionado ao CHECK constraint
-  - `requireAuth` injeta `req.userPerfil` e `req.contaId`; `tenant.js` com `requireSuperAdmin` / `requireTenant`
-  - Isolamento em `empresas`, `perfis`, `unidades`, `itens`, `grupos`
-  - Catálogo de itens/grupos em dois níveis: global (`conta_id NULL`) + por tenant
+  - Perfil `super_admin` sem acesso a dados de tenants (sigilo); `gestor` adicionado ao CHECK constraint
+  - `requireAuth` injeta `req.userPerfil` e `req.contaId`; `tenant.js` com `requireSuperAdmin` / `requireTenant` / `blockSuperAdmin`
+  - `blockSuperAdmin` aplicado em todas as rotas de dados: empresas, unidades, perfis, vistorias, areas, ocorrencias, fotos, planos-acao, relatorios
+  - Isolamento de tenant em todas as rotas, incluindo vistorias (via `unidadeIdsDoTenant` + `vistoriaPertenceAoTenant`)
+  - Catálogo de itens/grupos em dois níveis: global (`conta_id NULL`, só super_admin vê/gerencia) + por tenant
   - Self-service `/registro.html`; painel `/super-admin/index.html`
   - `api.js`: módulo `contas`, função `requireRoles([])`; login retorna `conta_id`
   - Migrations: `melhoria5-saas-tenant.sql` + `melhoria5-1-itens-tenant.sql`
+  - `DELETE /api/contas/:id` (super_admin): bloqueia se existirem empresas/perfis; protege Conta Padrão
 
 ### Pendente (plano de Melhorias)
 
