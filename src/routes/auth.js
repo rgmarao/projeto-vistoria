@@ -140,10 +140,11 @@ router.post('/register', async (req, res) => {
     const perfisValidos = ['admin', 'analista', 'usuario'];
     const perfilFinal = perfisValidos.includes(perfil) ? perfil : 'usuario';
 
-    const { data, error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.admin.createUser({
       email,
       password: senha,
-      options: { data: { nome, role: perfilFinal } }
+      email_confirm: true,
+      user_metadata: { nome, role: perfilFinal }
     });
 
     if (error) {
