@@ -22,7 +22,7 @@ export function requireLogin(redirectTo = '/index.html') {
 
 export function requireRole(role, redirectTo = '/index.html') {
   const user = getUser();
-  if (!user || user.perfil !== role) window.location.href = redirectTo;
+  if (!user || user.role !== role) window.location.href = redirectTo;
 }
 
 // ── Fetch helper ───────────────────────────────────────────────

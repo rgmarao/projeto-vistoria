@@ -127,7 +127,7 @@ router.post('/reset-password', async (req, res) => {
 // ─────────────────────────────────────────
 router.post('/register', async (req, res) => {
   try {
-    const { nome, email, senha } = req.body;
+    const { nome, email, senha, perfil } = req.body;
 
     if (!nome || !email || !senha) {
       return res.status(400).json({ error: 'Nome, email e senha são obrigatórios' });
@@ -137,28 +137,37 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'A senha deve ter no mínimo 6 caracteres' });
     }
 
+    const perfisValidos = ['admin', 'analista', 'usuario'];
+    const perfilFinal = perfisValidos.includes(perfil) ? perfil : 'usuario';
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password: senha,
-      options: {
-        data: {
-          nome,
-          role: 'vistoriador'
-        }
-      }
+      options: { data: { nome, role: perfilFinal } }
     });
 
     if (error) {
       return res.status(400).json({ error: error.message });
     }
 
+    const { error: errPerfil } = await supabase
+      .from('perfis')
+      .insert({ id: data.user.id, nome, perfil: perfilFinal, ativo: true });
+
+    if (errPerfil) {
+      // Rollback: remove o usuário do Auth para não deixar órfão
+      await supabase.auth.admin.deleteUser(data.user.id);
+      console.error('Erro ao criar perfil (rollback executado):', errPerfil);
+      return res.status(500).json({ error: 'Erro ao salvar perfil do usuário. Tente novamente.' });
+    }
+
     return res.status(201).json({
       message: '✅ Usuário cadastrado com sucesso',
       user: {
-        id: data.user.id,
-        email: data.user.email,
-        nome: data.user.user_metadata?.nome,
-        role: data.user.user_metadata?.role
+        id:     data.user.id,
+        email:  data.user.email,
+        nome,
+        role:   perfilFinal
       }
     });
 

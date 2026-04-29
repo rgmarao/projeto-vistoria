@@ -260,11 +260,10 @@
         const res = await fetch('/api/auth/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
-          body: JSON.stringify({ nome, email, senha })
+          body: JSON.stringify({ nome, email, senha, perfil })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Erro ao registrar');
-        await perfis.criar({ id: data.user.id, nome, perfil });
         ok.textContent = `Usuário ${nome} criado com sucesso!`;
         ok.classList.remove('d-none');
         ['criar-nome','criar-email','criar-senha'].forEach(id => document.getElementById(id).value = '');
